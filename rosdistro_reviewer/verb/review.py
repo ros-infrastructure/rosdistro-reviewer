@@ -9,6 +9,8 @@ from colcon_core.logging import get_effective_console_level
 from colcon_core.plugin_system import satisfies_version
 from colcon_core.verb import VerbExtensionPoint
 from rosdistro_reviewer.element_analyzer import analyze
+from rosdistro_reviewer.submitter import add_review_submitter_arguments
+from rosdistro_reviewer.submitter import submit_review
 
 
 class ReviewVerb(VerbExtensionPoint):
@@ -31,6 +33,8 @@ class ReviewVerb(VerbExtensionPoint):
             help='Git commit-ish which contains changes that should be '
                  'reviewed (default: uncommitted changes)')
 
+        add_review_submitter_arguments(parser)
+
     def main(self, *, context):  # noqa: D102
         review = analyze(
             Path.cwd(),
@@ -39,4 +43,6 @@ class ReviewVerb(VerbExtensionPoint):
         if review:
             root = Path.cwd() if context.args.head_ref is None else None
             print('\n' + review.to_text(root=root) + '\n')
+
+            submit_review(context.args, review)
         return 0
