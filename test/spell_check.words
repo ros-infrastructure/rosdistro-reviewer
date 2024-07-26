@@ -2,6 +2,7 @@ addfinalizer
 apache
 bubblify
 colcon
+committish
 corge
 deserialized
 diffs
@@ -26,9 +27,11 @@ returncode
 rosdistro
 rstrip
 rtype
+runpy
 scspell
 setuptools
 thomas
 unidiff
+unittest
 waldo
 yaml
