@@ -1,0 +1,30 @@
+---
+name: Automated Review for rosdistro
+description: >-
+  Generate automated review for rosdistro index and rosdep database changes
+inputs:
+  token:
+    description: GitHub Authentication Token
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up rosdistro-reviewer
+      shell: bash
+      run: |
+        python -m venv .rosdistro-reviewer-venv
+        . .rosdistro-reviewer-venv/bin/activate
+        python -m pip install "${{ github.action_path }}[github]" --quiet
+    - name: Generate automated review
+      shell: bash
+      run: |
+        . .rosdistro-reviewer-venv/bin/activate
+        rosdistro-reviewer \
+          --log-base /dev/null \
+          --target-ref ${{ github.event.pull_request.base.sha }} \
+          --head-ref ${{ github.event.pull_request.head.sha }} \
+          --github-pull-request \
+            ${{ github.repository }}#${{ github.event.pull_request.number }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
