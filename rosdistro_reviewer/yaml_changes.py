@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 
 from typing import Any
+from typing import Iterable
 from typing import Mapping
 from typing import Optional
 
@@ -11,7 +12,15 @@ from rosdistro_reviewer.yaml_lines import AnnotatedSafeLoader
 import yaml
 
 
-def _contains(needle, haystack) -> bool:
+def _contains(needle: Optional[range], haystack: Iterable[range]) -> bool:
+    """
+    Determine if a range intersects with any ranges in another group of ranges.
+
+    :param needle: The candidate range to look for intersection with
+    :param haystack: The group of other ranges to check for intersection with
+    :returns: True if the candidate range intersects with at least one member
+      of the other group of ranges, otherwise False.
+    """
     if needle is not None:
         for straw in haystack:
             if needle.start < straw.stop and needle.stop > straw.start:
