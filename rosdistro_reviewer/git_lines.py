@@ -1,6 +1,7 @@
 # Copyright 2024 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import os.path
 from typing import Dict
 from typing import Iterable
 from typing import List
@@ -84,8 +85,9 @@ def get_added_lines(
                 for line in hunk:
                     if line.line_type != unidiff.LINE_TYPE_ADDED:
                         continue
-                    lines.setdefault(file.path, [])
-                    lines[file.path].append(line.target_line_no)
+                    lines.setdefault(
+                        os.path.normpath(file.path),
+                        []).append(line.target_line_no)
 
     if not lines:
         return None
