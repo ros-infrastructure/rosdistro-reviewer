@@ -9,14 +9,17 @@ debian
 deserialized
 diffs
 eoan
+filepath
 fred
 github
 https
+india
 iterdir
 itertools
 jessie
 lenny
 linter
+linting
 mantic
 mktemp
 mypy
@@ -52,3 +55,6 @@ waldo
 xenial
 yakkety
 yaml
+yamllint
+yankee
+zulu
