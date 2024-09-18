@@ -1,6 +1,8 @@
 # Copyright 2024 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import os.path
+
 from git import Head
 from git import Repo
 import pytest
@@ -30,12 +32,13 @@ def git_repo(
     repo.index.commit('Orphaned commit')
 
     repo.create_head('lines2', 'base').checkout()
-    lines2_txt = repo_dir / 'lines2.txt'
+    lines2_txt = repo_dir / 'lines2' / 'lines.txt'
+    lines2_txt.parent.mkdir()
     with lines2_txt.open('w') as f:
         f.write('\n'.join(['1', '2']))
     repo.index.add((str(lines2_txt),))
     repo.index.remove(str(lines_txt), working_tree=True)
-    repo.index.commit('Add lines2.txt, remove lines.txt')
+    repo.index.commit('Add lines2/lines.txt, remove lines.txt')
 
     repo.create_head('less_c', 'base').checkout()
     with lines_txt.open('w') as f:
@@ -110,7 +113,13 @@ def test_added_lines(git_repo: Repo) -> None:
     # Check file being added
     lines = get_added_lines(git_repo.working_dir, target_ref='base',
                             head_ref='lines2')
-    assert lines == {'lines2.txt': [range(1, 3)]}
+    assert lines == {os.path.join('lines2', 'lines.txt'): [range(1, 3)]}
+
+    # Check path targeting with a separator
+    lines = get_added_lines(git_repo.working_dir, target_ref='base',
+                            head_ref='lines2',
+                            paths=[os.path.join('lines2', 'lines.txt')])
+    assert lines == {os.path.join('lines2', 'lines.txt'): [range(1, 3)]}
 
     # Check failure to find merge base
     with pytest.raises(RuntimeError):
