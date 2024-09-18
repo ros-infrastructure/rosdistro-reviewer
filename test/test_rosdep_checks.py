@@ -33,8 +33,8 @@ def rosdep_repo(empty_repo) -> Iterable[Repo]:
         with file_path.open('w') as f:
             yaml.dump(data, f)
 
-    empty_repo.index.add(
-        (str(repo_dir / 'rosdep' / file) for file in CONTROL_RULES.keys()))
+        empty_repo.index.add(str(file_path))
+
     empty_repo.index.commit('Add rosdep files')
 
     return empty_repo
@@ -300,7 +300,8 @@ def test_control(rosdep_repo):
     repo_dir = Path(rosdep_repo.working_tree_dir)
     extension = RosdepAnalyzer()
 
-    for file_name, data in VIOLATIONS['*'].items():
+    rules = _merge_two_rules(EXISTING_RULES, CONTROL_RULES)
+    for file_name, data in rules.items():
         file_path = repo_dir / 'rosdep' / file_name
         with file_path.open('w') as f:
             yaml.dump(data, f)
@@ -308,6 +309,46 @@ def test_control(rosdep_repo):
     criteria, annotations = extension.analyze(repo_dir)
     assert criteria and not annotations
     assert all(Recommendation.APPROVE == c.recommendation for c in criteria)
+
+
+def test_target_ref(rosdep_repo):
+    repo_dir = Path(rosdep_repo.working_tree_dir)
+    extension = RosdepAnalyzer()
+
+    rules = _merge_two_rules(EXISTING_RULES, CONTROL_RULES)
+    for file_name, data in rules.items():
+        file_path = repo_dir / 'rosdep' / file_name
+        with file_path.open('w') as f:
+            yaml.dump(data, f)
+
+        rosdep_repo.index.add(str(file_path))
+
+    rosdep_repo.index.commit('Add control rules')
+
+    # Add some violations to the stage, choose set 'A' as candidate
+    rules = _merge_two_rules(rules, VIOLATIONS['A'])
+    for file_name, data in rules.items():
+        file_path = repo_dir / 'rosdep' / file_name
+        with file_path.open('w') as f:
+            yaml.dump(data, f)
+
+    criteria, annotations = extension.analyze(repo_dir, head_ref='HEAD')
+    assert criteria and not annotations
+    assert all(Recommendation.APPROVE == c.recommendation for c in criteria)
+
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria and annotations
+    assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
+
+
+def test_removal_only(rosdep_repo):
+    repo_dir = Path(rosdep_repo.working_tree_dir)
+    extension = RosdepAnalyzer()
+
+    for file_name in EXISTING_RULES.keys():
+        (repo_dir / 'rosdep' / file_name).write_text('')
+
+    assert (None, None) == extension.analyze(repo_dir)
 
 
 def test_violation(rosdep_repo, violation_rules):
