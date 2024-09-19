@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 from typing import Dict
 from typing import List
@@ -10,6 +11,9 @@ from typing import Tuple
 
 from colcon_core.logging import colcon_logger
 from colcon_core.plugin_system import satisfies_version
+from git import Repo
+from git.objects import Blob
+from git.objects import Tree
 from rosdep2 import create_default_installer_context
 from rosdistro_reviewer.element_analyzer \
     import ElementAnalyzerExtensionPoint
@@ -291,15 +295,34 @@ def _check_installers(criteria, annotations, changed_rosdeps):
     criteria.append(Criterion(recommendation, message))
 
 
+def _is_yaml_blob(item, depth) -> bool:
+    return PurePosixPath(item.path).suffix == '.yaml'
+
+
 def _get_changed_rosdeps(
     path: Path,
     target_ref: Optional[str] = None,
     head_ref: Optional[str] = None,
 ) -> Tuple[Optional[Dict[str, int]], Optional[Dict[str, Any]]]:
-    rosdep_files = [
-        str(p.relative_to(path))
-        for p in path.glob('rosdep/*.yaml')
-    ]
+    if head_ref:
+        with Repo(path) as repo:
+            tree = repo.tree(head_ref)
+            try:
+                tree = tree['rosdep']
+            except KeyError:
+                return None, None
+            if not isinstance(tree, Tree):
+                return None, None
+            rosdep_files = [
+                str(item.path)
+                for item in tree.traverse(predicate=_is_yaml_blob)
+                if isinstance(item, Blob)
+            ]
+    else:
+        rosdep_files = [
+            str(p.relative_to(path))
+            for p in path.glob('rosdep/*.yaml')
+        ]
     if not rosdep_files:
         logger.info('No rosdep files were found in the repository')
         return None, None
