@@ -87,7 +87,7 @@ def _check_key_names(criteria, annotations, changed_rosdeps, key_counts):
                 problems.add(
                     "Keys which contain only pip rules should end in '-pip'")
                 annotations.append(Annotation(
-                    'rosdep/python.yaml',
+                    file,
                     k.__lines__,
                     f"This key should{'' if pip_only else ' not'} "
                     "end in '-pip'"))
