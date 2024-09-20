@@ -1,6 +1,8 @@
 # Copyright 2024 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 from typing import Iterable
 from typing import Mapping
@@ -83,8 +85,9 @@ def get_changed_yaml(
     if head_ref is not None:
         with Repo(path) as repo:
             for yaml_path in paths:
+                git_yaml_path = str(PurePosixPath(Path(yaml_path)))
                 data[yaml_path] = yaml.load(
-                    repo.tree(head_ref)[yaml_path].data_stream,
+                    repo.tree(head_ref)[git_yaml_path].data_stream,
                     Loader=AnnotatedSafeLoader)
     else:
         for yaml_path in paths:
