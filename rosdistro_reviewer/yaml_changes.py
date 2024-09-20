@@ -81,15 +81,14 @@ def get_changed_yaml(
     if not changes:
         return None
 
-    repo = Repo(path)
-
     data = {}
     if head_ref is not None:
-        for yaml_path in paths:
-            git_yaml_path = str(PurePosixPath(Path(yaml_path)))
-            data[yaml_path] = yaml.load(
-                repo.tree(head_ref)[git_yaml_path].data_stream,
-                Loader=AnnotatedSafeLoader)
+        with Repo(path) as repo:
+            for yaml_path in paths:
+                git_yaml_path = str(PurePosixPath(Path(yaml_path)))
+                data[yaml_path] = yaml.load(
+                    repo.tree(head_ref)[git_yaml_path].data_stream,
+                    Loader=AnnotatedSafeLoader)
     else:
         for yaml_path in paths:
             with (path / yaml_path).open('r') as f:

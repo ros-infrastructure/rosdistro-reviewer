@@ -46,48 +46,48 @@ def get_added_lines(
     :returns: Mapping of relative file paths to sequences of line number
         ranges, or None if no changes were detected
     """
-    repo = Repo(path)
-
-    if head_ref is not None:
-        head = repo.commit(head_ref)
-    else:
-        head = None
-
-    if target_ref is not None:
-        target = repo.commit(target_ref)
-    elif head is not None:
-        target = head.parents[0]
-    else:
-        target = repo.head.commit
-
-    if head is not None:
-        for base in repo.merge_base(target, head):
-            if base is not None:
-                break
+    with Repo(path) as repo:
+        if head_ref is not None:
+            head = repo.commit(head_ref)
         else:
-            raise RuntimeError(
-                f"No merge base found between '{target_ref}' and '{head_ref}'")
-    else:
-        base = target
+            head = None
 
-    diffs = base.diff(head, paths, True)
+        if target_ref is not None:
+            target = repo.commit(target_ref)
+        elif head is not None:
+            target = head.parents[0]
+        else:
+            target = repo.head.commit
 
-    lines: Dict[str, List[int]] = {}
-    for diff in diffs:
-        if not diff.b_path:
-            continue
-        patch = f"""--- {diff.a_path if diff.a_path else '/dev/null'}
+        if head is not None:
+            for base in repo.merge_base(target, head):
+                if base is not None:
+                    break
+            else:
+                raise RuntimeError(
+                    f"No merge base found between '{target_ref}' and "
+                    f"'{head_ref}'")
+        else:
+            base = target
+
+        diffs = base.diff(head, paths, True)
+
+        lines: Dict[str, List[int]] = {}
+        for diff in diffs:
+            if not diff.b_path:
+                continue
+            patch = f"""--- {diff.a_path if diff.a_path else '/dev/null'}
 +++ {diff.b_path}
 {diff.diff.decode()}"""
-        patchset = unidiff.PatchSet(patch)
-        for file in patchset:
-            for hunk in file:
-                for line in hunk:
-                    if line.line_type != unidiff.LINE_TYPE_ADDED:
-                        continue
-                    lines.setdefault(
-                        os.path.normpath(file.path),
-                        []).append(line.target_line_no)
+            patchset = unidiff.PatchSet(patch)
+            for file in patchset:
+                for hunk in file:
+                    for line in hunk:
+                        if line.line_type != unidiff.LINE_TYPE_ADDED:
+                            continue
+                        lines.setdefault(
+                            os.path.normpath(file.path),
+                            []).append(line.target_line_no)
 
     if not lines:
         return None
