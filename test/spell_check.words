@@ -10,6 +10,7 @@ debian
 deserialized
 diffs
 eoan
+filepath
 fixturenames
 fred
 gentoo
@@ -23,6 +24,7 @@ juliet
 lenny
 libdelta
 linter
+linting
 mantic
 metafunc
 mktemp
@@ -59,3 +61,6 @@ waldo
 xenial
 yakkety
 yaml
+yamllint
+yankee
+zulu

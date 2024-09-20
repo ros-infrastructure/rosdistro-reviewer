@@ -13,17 +13,6 @@ import yaml
 
 
 @pytest.fixture
-def empty_repo(tmp_path) -> Iterable[Repo]:
-    with Repo.init(tmp_path) as repo:
-        repo.index.commit('Initial commit')
-
-        base = repo.create_head('main')
-        base.checkout()
-
-        yield repo
-
-
-@pytest.fixture
 def rosdep_repo(empty_repo) -> Iterable[Repo]:
     repo_dir = Path(empty_repo.working_tree_dir)
     (repo_dir / 'rosdep').mkdir()
