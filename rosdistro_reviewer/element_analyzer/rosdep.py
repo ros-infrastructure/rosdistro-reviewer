@@ -314,7 +314,7 @@ def _get_changed_rosdeps(
             if not isinstance(tree, Tree):
                 return None, None
             rosdep_files = [
-                str(item.path)
+                str(Path(item.path))
                 for item in tree.traverse(predicate=_is_yaml_blob)
                 if isinstance(item, Blob)
             ]
