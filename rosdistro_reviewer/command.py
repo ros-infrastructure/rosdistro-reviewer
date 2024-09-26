@@ -1,6 +1,7 @@
 # Copyright 2024 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import os
 from typing import Any
 
 from colcon_core.command \
@@ -29,6 +30,7 @@ def main(*args: str, **kwargs: str) -> Any:
         'environment_variable_group_name':
             'rosdistro_reviewer.environment_variable',
         'default_verb': ReviewVerb,
+        'default_log_base': os.devnull,
         **kwargs,
     }
     return colcon_main(*args, **colcon_kwargs)
