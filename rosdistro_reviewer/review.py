@@ -136,9 +136,11 @@ class Review:
         if not self._elements:
             return '(No changes to supported elements were detected)'
 
-        message = 'This is an automated review.'
-        for element, criteria in self.elements.items():
-            message += f'\n\nFor changes related to {element}:'
+        message = ''
+        for idx, (element, criteria) in enumerate(self.elements.items()):
+            if idx:
+                message += '\n\n'
+            message += f'For changes related to {element}:'
             for criterion in criteria:
                 message += '\n* ' + criterion.recommendation.as_symbol()
                 message += ' ' + textwrap.indent(criterion.rationale, '  ')[2:]
