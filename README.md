@@ -10,7 +10,7 @@ The rosdistro index and rosdep database hold a significant amount of semi-manual
 
 This tool analyzes a git repository containing changes to the rosdistro index and/or rosdep database and provides specific and actionable feedback. It is also capable of posting that feedback directly to a content forge like GitHub as a pull request review.
 
-## Invoking rosdistro-review locally
+## Invoking rosdistro-reviewer locally
 
 Nearly all of the validation that rosdistro-review does can be performed locally. To run the analysis, just run `rosdistro-reviewer` from anywhere in the git repository you'd like to check. By default, the tool will only analyze uncommitted changes against the most recent commit. If you've already committed your changes and you'd still like to check them, you can choose a different target ref with the `--target-ref` option. For example:
 ```
