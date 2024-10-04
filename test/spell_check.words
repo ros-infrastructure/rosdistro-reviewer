@@ -1,6 +1,7 @@
 addfinalizer
 apache
 archlinux
+autouse
 bubblify
 colcon
 committish
@@ -30,6 +31,7 @@ metafunc
 mktemp
 mypy
 namedtuple
+noop
 noqa
 patchset
 pathlib
