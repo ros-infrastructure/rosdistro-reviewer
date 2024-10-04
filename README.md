@@ -18,8 +18,6 @@ $ rosdistro-reviewer --target-ref origin/master
 
   ✅ No changes recommended
  /————————————————————————————————————————————————————————————————————————————\
- | This is an automated review.                                               |
- |                                                                            |
  | For changes related to rosdep:                                             |
  | * ✅ New rosdep keys are named appropriately                               |
  |                                                                            |
