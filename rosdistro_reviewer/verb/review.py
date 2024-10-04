@@ -13,6 +13,20 @@ from rosdistro_reviewer.submitter import add_review_submitter_arguments
 from rosdistro_reviewer.submitter import submit_review
 
 
+def _find_repo_root():
+    # We delay this import until after the GitPython
+    # logger has already been configured to avoid DEBUG
+    # messages on the console at import time
+    from git import Repo
+    from git import InvalidGitRepositoryError
+    try:
+        with Repo(Path.cwd(), search_parent_directories=True) as repo:
+            return Path(repo.working_tree_dir)
+    except InvalidGitRepositoryError as e:
+        raise RuntimeError(
+            'This tool must be run from within a git repository') from e
+
+
 class ReviewVerb(VerbExtensionPoint):
     """Generate a review for rosdistro changes."""
 
@@ -36,13 +50,14 @@ class ReviewVerb(VerbExtensionPoint):
         add_review_submitter_arguments(parser)
 
     def main(self, *, context):  # noqa: D102
+        root = _find_repo_root()
         review = analyze(
-            Path.cwd(),
+            root,
             target_ref=context.args.target_ref,
             head_ref=context.args.head_ref)
         if review:
-            root = Path.cwd() if context.args.head_ref is None else None
-            print('\n' + review.to_text(root=root) + '\n')
+            text_root = root if context.args.head_ref is None else None
+            print('\n' + review.to_text(root=text_root) + '\n')
 
             submit_review(context.args, review)
         return 0

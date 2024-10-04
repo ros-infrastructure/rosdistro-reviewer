@@ -76,3 +76,19 @@ def test_verb_review(empty_repo):
         return_value=Path(empty_repo.working_tree_dir),
     ):
         assert 0 == extension.main(context=context)
+
+
+def test_verb_review_no_repo(tmp_path):
+    extension = ReviewVerb()
+    extension.add_arguments(parser=Mock())
+
+    context = CommandContext(
+        command_name='rosdistro-reviewer',
+        args=Mock())
+
+    with patch(
+        'rosdistro_reviewer.verb.review.Path.cwd',
+        return_value=tmp_path,
+    ):
+        with pytest.raises(RuntimeError):
+            extension.main(context=context)
