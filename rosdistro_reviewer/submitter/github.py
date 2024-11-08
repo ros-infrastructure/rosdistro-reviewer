@@ -23,23 +23,22 @@ This is an automated tool that helps check your pull request for correctness. Th
 If you'd like to run this tool again to generate a new review for your PR, [re-request review from GitHub Actions](https://github.com/ros-infrastructure/rosdistro-reviewer?tab=readme-ov-file#running-rosdistro-reviewer-in-github-actions).
 
 # ROS Distro Considerations
-* ROS Distribtutions are created using [REP-134 Standards Track](https://ros.org/reps/rep-0143.html) as a guide.
+* ROS Distributions are created using [REP-134 Standards Track](https://ros.org/reps/rep-0143.html) as a guide.
 * Your package name should comply to [REP-144 ROS Package Naming](https://www.ros.org/reps/rep-0144.html)
-* Your pacakge must build for all platforms and architectures on the ROS buildfarm. See [REP-2000 ROS Releases and Supported Platforms](https://www.ros.org/reps/rep-2000.html) for all supported platforms for your ROS Distro.
+* Your package must build for all platforms and architectures on the ROS buildfarm. See [REP-2000 ROS Releases and Supported Platforms](https://www.ros.org/reps/rep-2000.html) for all supported platforms for your ROS Distro.
 * Your package must contain an [OSI approved license](https://opensource.org/licenses). Your `package.xml` file must also include that license in a machine readable format. See [REP-149 Package Manifest Format Three Specification](https://ros.org/reps/rep-0149.html#license-multiple-but-at-least-one) for additional details.
-* Your package must include a copyright at the top of every file.
 * A publicly available, open source, repository for your ROS package.
 * While not required, we recommend that you create an account for ROS Discourse and subscribe to the [appropriate release topic](https://discourse.ros.org/c/release/16).
-* If you real time chat would help you resolve an issue please join our [Discord Server] and join the `#infra-help` channel.
+* If you would like, you may join our [Discord Server](https://discord.com/servers/open-robotics-1077825543698927656) and ask questions in the `#infra-help` channel.
 
 # Package Considerations
 
 Having your package included in a ROS Distro is a badge of quality, and we recommend that package developers strive to create packages of the highest quality. We recommend package developers review the following resources before submitting their package.
 
-* [REP-2004 Package Quality Declaration](https://www.ros.org/reps/rep-2004.html)-- The ROS 2 TGC has created a quality rating system for ROS packages. These ratings should serve as a guide for package developers. We recommend package developers achieve a quality level of three or higher.
-* Documentation -- at minimum ROS packages should include an extensive [README.md file, and API level documentation using the Sphinx documentation system](https://docs.ros.org/en/rolling/How-To-Guides/Documenting-a-ROS-2-Package.html).
+* [REP-2004 Package Quality Declaration](https://www.ros.org/reps/rep-2004.html)-- The ROS 2 TSC has created a quality rating system for ROS packages. These ratings should serve as a guide for package developers. We recommend package developers achieve a quality level of three or higher.
+* Documentation -- it is recommended that ROS packages include an extensive [README.md file, and API level documentation using the Sphinx documentation system](https://docs.ros.org/en/rolling/How-To-Guides/Documenting-a-ROS-2-Package.html).
 * Maintainer Responsibilities -- the ROS 2 documentation includes a guide to [ROS package maintainer responsibilities](https://docs.ros.org/en/rolling/How-To-Guides/Core-maintainer-guide.html) that summarizes your responsibilities as an open source maintainer.
-* Your package should strive to conform to the [ROS 2 Developer Guide](https://docs.ros.org/en/rolling/The-ROS2-Project/Contributing/Developer-Guide.html) and the [ROS 2 Style Guide](https://docs.ros.org/en/rolling/The-ROS2-Project/Contributing/Code-Style-Language-Versions.html).
+* We recommend that your package should strive to conform to the [ROS 2 Developer Guide](https://docs.ros.org/en/rolling/The-ROS2-Project/Contributing/Developer-Guide.html) and the [ROS 2 Style Guide](https://docs.ros.org/en/rolling/The-ROS2-Project/Contributing/Code-Style-Language-Versions.html).
 
 ---
 
