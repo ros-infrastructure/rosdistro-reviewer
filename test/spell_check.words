@@ -3,6 +3,7 @@ apache
 archlinux
 autouse
 bubblify
+buildfarm
 colcon
 committish
 connectionpool
