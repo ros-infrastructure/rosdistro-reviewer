@@ -3,6 +3,7 @@ apache
 archlinux
 autouse
 bubblify
+buildfarm
 colcon
 committish
 connectionpool
@@ -10,6 +11,7 @@ corge
 debian
 deserialized
 diffs
+distro
 eoan
 filepath
 fixturenames
@@ -34,6 +36,7 @@ mypy
 namedtuple
 noop
 noqa
+opensource
 patchset
 pathlib
 plugin
