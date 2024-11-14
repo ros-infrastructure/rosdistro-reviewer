@@ -18,7 +18,10 @@ GITHUB_TOKEN_ENVIRONMENT_VARIABLE = EnvironmentVariable(
 
 INTRODUCTION = """Thanks for sending a pull request to ROS distro!
 
-This is an automated tool that helps check your pull request for correctness. This tool checks a number of attributes associated with your ROS package and generates a report that helps our reviewers merge your pull request in a timely fashion. Here are a few things to consider when sending adding or updating a package to ROS Distro. ROS Distro includes a very helpful [CONTRIBUTING.md](https://github.com/ros/rosdistro/blob/master/CONTRIBUTING.md) file that we recommend reading if it is your first time submitting a package. Please also read the [ROS Distro review guidelines](https://github.com/rosdistro/rosdistro/blob/master/REVIEW_GUIDELINES.md) which summarizes this release process.
+This is an automated tool that helps check your pull request for correctness.
+This tool checks a number of attributes associated with your ROS package and generates a report that helps our reviewers merge your pull request in a timely fashion. Here are a few things to consider when sending adding or updating a package to ROS Distro.
+ROS Distro includes a very helpful [CONTRIBUTING.md](https://github.com/ros/rosdistro/blob/master/CONTRIBUTING.md) file that we recommend reading if it is your first time submitting a package.
+Please also read the [ROS Distro review guidelines](https://github.com/rosdistro/rosdistro/blob/master/REVIEW_GUIDELINES.md) which summarizes this release process.
 
 If you'd like to run this tool again to generate a new review for your PR, [re-request review from GitHub Actions](https://github.com/ros-infrastructure/rosdistro-reviewer?tab=readme-ov-file#running-rosdistro-reviewer-in-github-actions).
 
@@ -37,8 +40,12 @@ Having your package included in a ROS Distro is a badge of quality, and we recom
 
 * [REP-2004 Package Quality Declaration](https://www.ros.org/reps/rep-2004.html)-- The ROS 2 TSC has created a quality rating system for ROS packages. These ratings should serve as a guide for package developers. We recommend package developers achieve a quality level of three or higher.
 * Documentation -- it is recommended that ROS packages include an extensive [README.md file, and API level documentation using the Sphinx documentation system](https://docs.ros.org/en/rolling/How-To-Guides/Documenting-a-ROS-2-Package.html).
-* Maintainer Responsibilities -- the ROS 2 documentation includes a guide to [ROS package maintainer responsibilities](https://docs.ros.org/en/rolling/How-To-Guides/Core-maintainer-guide.html) that summarizes your responsibilities as an open source maintainer.
+* Maintainer Responsibilities -- the ROS 2 documentation includes a guide to [ROS package maintainer responsibilities](https://docs.ros.org/en/rolling/How-To-Guides/Core-maintainer-guide.html) that summarizes your responsibilities as an open source maintainer. While we do not enforce these requirements on package maintainers they should be considered best practices.
 * We recommend that your package should strive to conform to the [ROS 2 Developer Guide](https://docs.ros.org/en/rolling/The-ROS2-Project/Contributing/Developer-Guide.html) and the [ROS 2 Style Guide](https://docs.ros.org/en/rolling/The-ROS2-Project/Contributing/Code-Style-Language-Versions.html).
+
+# Need Help?
+
+Please post your questions to [Robotics Stack Exchange](https://docs.ros.org/) or refer to the `#infra-help` channel on our [Discord server](https://discord.com/servers/open-robotics-1077825543698927656).
 
 ---
 
