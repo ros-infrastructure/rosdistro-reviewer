@@ -28,12 +28,7 @@ $ rosdistro-reviewer --target-ref origin/master
 
 ## Running rosdistro-reviewer in GitHub Actions
 
-When a [rosdistro](https://github.com/ros/rosdistro) pull request is opened on GitHub which contains changes that this tool can process, it is invoked using GitHub Actions and the resulting analysis is posted to the pull request as a review by the user `github-actions[bot]`. The rosdistro review team uses the information presented by this review to determine if proposed commits require changes before merging.
+When a [rosdistro](https://github.com/ros/rosdistro) pull request is opened or updated on GitHub which contains changes that this tool can process, it is invoked using GitHub Actions and the resulting analysis is posted to the pull request as a review by the user `github-actions[bot]`. The rosdistro review team uses the information presented by this review to determine if proposed commits require changes before merging.
 
 | ![example GitHub pull request review](docs/github_review.png) |
-|-|
-
-Unlike typical pull request automation, a new review will not be generated when new changes are pushed to the pull request branch. When you feel that you've sufficiently addressed the feedback given in a previous review, you should re-request review from "GitHub Actions" and a fresh analysis will be performed.
-
-| ![requesting re-review from GitHub Actions](docs/github_review_request.png) |
 |-|

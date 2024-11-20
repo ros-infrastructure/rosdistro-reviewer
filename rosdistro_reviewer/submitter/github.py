@@ -23,8 +23,6 @@ This tool checks a number of attributes associated with your ROS package and gen
 ROS Distro includes a very helpful [CONTRIBUTING.md](https://github.com/ros/rosdistro/blob/master/CONTRIBUTING.md) file that we recommend reading if it is your first time submitting a package.
 Please also read the [ROS Distro review guidelines](https://github.com/rosdistro/rosdistro/blob/master/REVIEW_GUIDELINES.md) which summarizes this release process.
 
-If you'd like to run this tool again to generate a new review for your PR, [re-request review from GitHub Actions](https://github.com/ros-infrastructure/rosdistro-reviewer?tab=readme-ov-file#running-rosdistro-reviewer-in-github-actions).
-
 # ROS Distro Considerations
 * ROS Distributions are created using [REP-134 Standards Track](https://ros.org/reps/rep-0143.html) as a guide.
 * Your package name should comply to [REP-144 ROS Package Naming](https://www.ros.org/reps/rep-0144.html)
