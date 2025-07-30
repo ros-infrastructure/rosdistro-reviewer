@@ -19,6 +19,8 @@ from rosdistro_reviewer.git_lines import get_added_lines
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Criterion
 from rosdistro_reviewer.review import Recommendation
+from rosdistro_reviewer.yaml_lines import AnnotatedSafeLoader
+import yaml
 from yamllint import linter
 from yamllint.config import YamlLintConfig
 
@@ -59,6 +61,42 @@ def _get_changed_yaml(
         return None
 
     return changes
+
+
+def _get_previous_keys(raw_data: str) -> Mapping[int, int]:
+    """
+    For each key, determine what key (if any) precedes it in the file.
+
+    :param raw_data: The un-parsed YAML text.
+    :returns: Mapping from line number to previous key line number.
+    """
+    data = yaml.load(raw_data, Loader=AnnotatedSafeLoader)
+    previous_keys = {}
+
+    def _process_level(maybe_mapping):
+        if not isinstance(maybe_mapping, dict):
+            return
+
+        # DFS
+        for child in maybe_mapping.values():
+            _process_level(child)
+
+        # Order by line number
+        keys = sorted(
+            (k for k in maybe_mapping.keys() if hasattr(k, '__lines__')),
+            key=lambda k: k.__lines__.start,
+        )
+
+        prev = None
+        for k in keys:
+            curr = k.__lines__.start
+            if prev not in (None, curr):
+                previous_keys[curr] = prev
+            prev = curr
+
+    _process_level(data)
+
+    return previous_keys
 
 
 class YamllintAnalyzer(ElementAnalyzerExtensionPoint):
@@ -112,6 +150,8 @@ class YamllintAnalyzer(ElementAnalyzerExtensionPoint):
                     )[git_yaml_path].data_stream.read().decode()
             else:
                 data = (path / yaml_path).read_text()
+
+            previous_keys = None
             for problem in linter.run(data, config, filepath=git_yaml_path):
                 if any(problem.line in chunk for chunk in lines):
                     annotations.append(Annotation(
@@ -120,6 +160,32 @@ class YamllintAnalyzer(ElementAnalyzerExtensionPoint):
                         'This line does not pass YAML '
                         f'linter checks: {problem.desc}'))
                     recommendation = Recommendation.DISAPPROVE
+                elif problem.rule == 'key-ordering':
+                    # The key-ordering linter needs special consideration. It
+                    # scans from top to bottom, so when a key is added (or
+                    # modified) which should be earlier, it is identified
+                    # properly. However, if a key is added which should be
+                    # placed later, the key AFTER it is flagged as that is
+                    # the first key which is out of order.
+                    # When we see an out-of-order problem that isn't on a
+                    # modified line, check to see if the key before it was
+                    # changed. If so, it is almost certainly the real cause.
+
+                    # lazy-load
+                    if previous_keys is None:
+                        previous_keys = _get_previous_keys(data)
+
+                    probable_culprit = previous_keys.get(problem.line)
+                    if (
+                        probable_culprit is not None and
+                        any(probable_culprit in chunk for chunk in lines)
+                    ):
+                        annotations.append(Annotation(
+                            yaml_path,
+                            range(probable_culprit, probable_culprit + 1),
+                            'This line does not pass YAML '
+                            f'linter checks: {problem.desc}'))
+                        recommendation = Recommendation.DISAPPROVE
 
         if recommendation == Recommendation.APPROVE:
             message = 'All new lines of YAML pass linter checks'
