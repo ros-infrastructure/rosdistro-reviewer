@@ -72,7 +72,7 @@ def analyze(
     :param path: Path on disk to the git repository
     :param extensions: The element analyzer extensions to use, if `None` is
       passed use the extensions provided by
-      :function:`get_element_analyzer_extensions`
+      :func:`get_element_analyzer_extensions`
     :param target_ref: The git ref to base the diff from
     :param head_ref: The git ref where the changes have been made
     :returns: A new review instance, or None if no

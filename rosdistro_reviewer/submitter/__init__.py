@@ -61,7 +61,7 @@ def add_review_submitter_arguments(parser, *, extensions=None) -> None:
     :param parser: The argument parser
     :param extensions: The review submitter extensions to use, if `None` is
       passed use the extensions provided by
-      :function:`get_review_submitter_extensions`
+      :func:`get_review_submitter_extensions`
     """
     if extensions is None:
         extensions = get_review_submitter_extensions()
@@ -78,7 +78,7 @@ def submit_review(args, review, *, extensions=None) -> None:
     :param review: The code review to submit
     :param extensions: The review submitter extensions to use, if `None` is
       passed use the extensions provided by
-      :function:`get_review_submitter_extensions`
+      :func:`get_review_submitter_extensions`
     """
     if extensions is None:
         extensions = get_review_submitter_extensions()
