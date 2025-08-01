@@ -19,7 +19,7 @@ def _rangeify(sequence: Iterable[int]) -> Iterable[range]:
 
     for item in sequence:
         if chunk_last != item - 1:
-            if chunk_start is not None:
+            if chunk_start is not None and chunk_last is not None:
                 yield range(chunk_start, chunk_last + 1)
             chunk_start = item
         chunk_last = item
@@ -77,8 +77,11 @@ def get_added_lines(
             if not diff.b_path:
                 continue
             patch = f"""--- {diff.a_path if diff.a_path else '/dev/null'}
-+++ {diff.b_path}
-{diff.diff.decode()}"""
++++ {diff.b_path}"""
+            if isinstance(diff.diff, str):
+                patch += '\n' + diff.diff
+            elif isinstance(diff.diff, bytes):
+                patch += '\n' + diff.diff.decode()
             patchset = unidiff.PatchSet(patch)
             for file in patchset:
                 for hunk in file:
