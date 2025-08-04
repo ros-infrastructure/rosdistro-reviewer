@@ -30,5 +30,5 @@ $ rosdistro-reviewer --target-ref origin/master
 
 When a [rosdistro](https://github.com/ros/rosdistro) pull request is opened or updated on GitHub which contains changes that this tool can process, it is invoked using GitHub Actions and the resulting analysis is posted to the pull request as a review by the user `github-actions[bot]`. The rosdistro review team uses the information presented by this review to determine if proposed commits require changes before merging.
 
-| ![example GitHub pull request review](docs/github_review.png) |
+| ![example GitHub pull request review](doc/github_review.png) |
 |-|
