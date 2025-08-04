@@ -11,7 +11,7 @@ jobs:
     uses: ros-infrastructure/ci/.github/workflows/pytest.yaml@main
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-  docs:
+  sphinx_documentation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
