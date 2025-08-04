@@ -42,4 +42,4 @@ When a `rosdistro <https://github.com/ros/rosdistro>`__ pull request is opened o
    :target: https://app.codecov.io/gh/ros-infrastructure/rosdistro-reviewer/branch/main
 .. |pypi| image:: https://img.shields.io/pypi/v/rosdistro-reviewer
    :target: https://pypi.org/project/rosdistro-reviewer/
-.. |example GitHub pull request review| image:: docs/github_review.png
+.. |example GitHub pull request review| image:: doc/github_review.png
