@@ -11,6 +11,12 @@ jobs:
     uses: ros-infrastructure/ci/.github/workflows/pytest.yaml@main
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install .[doc,github]
+      - run: make -C doc html "SPHINXOPTS=--fail-on-warning --keep-going"
   yamllint:
     runs-on: ubuntu-latest
     steps:
