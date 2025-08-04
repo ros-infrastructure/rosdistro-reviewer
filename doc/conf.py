@@ -35,5 +35,6 @@ apidoc_toc_file = False
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'sphinx_rtd_theme'
+html_baseurl = 'https://ros-infrastructure.github.io/rosdistro-reviewer/'
 html_domain_indices = False
 html_use_index = False
