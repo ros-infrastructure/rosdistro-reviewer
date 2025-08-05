@@ -14,7 +14,7 @@ Invoking rosdistro-reviewer locally
 
 Nearly all of the validation that rosdistro-review does can be performed locally. To run the analysis, just run ``rosdistro-reviewer`` from anywhere in the git repository you'd like to check. By default, the tool will only analyze uncommitted changes against the most recent commit. If you've already committed your changes and you'd still like to check them, you can choose a different target ref with the ``--target-ref`` option. For example:
 
-::
+.. code-block:: console
 
    $ rosdistro-reviewer --target-ref origin/master
 
