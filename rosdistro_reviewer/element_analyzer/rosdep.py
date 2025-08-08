@@ -127,7 +127,7 @@ def _check_key_names(criteria, annotations, changed_rosdeps, key_counts):
         for key, rules in changes.items():
             if not getattr(key, '__lines__', None):
                 continue
-            ubuntu_rule = rules.get('ubuntu', {})
+            ubuntu_rule = (rules or {}).get('ubuntu', {})
             if isinstance(ubuntu_rule, dict) and '*' in ubuntu_rule:
                 ubuntu_rule = ubuntu_rule['*']
             if isinstance(ubuntu_rule, dict):
@@ -181,7 +181,7 @@ def _check_platforms(criteria, annotations, changed_rosdeps):
         ))
         for changes in changed_rosdeps.values()
         for rules in changes.values()
-        for os, rule in rules.items()
+        for os, rule in (rules or {}).items()
     ):
         return
 
@@ -195,7 +195,7 @@ def _check_platforms(criteria, annotations, changed_rosdeps):
     # New rules for unsupported OSs are not allowed
     for file, changes in changed_rosdeps.items():
         for rules in changes.values():
-            for os, rule in rules.items():
+            for os, rule in (rules or {}).items():
                 if os not in os_keys and getattr(os, '__lines__', None):
                     recommendation = Recommendation.DISAPPROVE
                     problems.add(
@@ -242,7 +242,7 @@ def _check_installers(criteria, annotations, changed_rosdeps):
         )
         for changes in changed_rosdeps.values()
         for rules in changes.values()
-        for os, rule in rules.items()
+        for os, rule in (rules or {}).items()
     ):
         return
 
@@ -253,7 +253,7 @@ def _check_installers(criteria, annotations, changed_rosdeps):
 
     for file, changes in changed_rosdeps.items():
         for rules in changes.values():
-            for os, rule in rules.items():
+            for os, rule in (rules or {}).items():
                 if os == '*' or not isinstance(rule, dict):
                     continue
                 try:
