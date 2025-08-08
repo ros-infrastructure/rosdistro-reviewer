@@ -128,6 +128,13 @@ CONTROL_RULES = {
                 },
             },
         },
+        'none-key': None,
+        'none-rules': {
+            'debian': None,
+            'ubuntu': {
+                'apt': None,
+            },
+        },
     },
     'python.yaml': {
         'python3-control-bravo': {
