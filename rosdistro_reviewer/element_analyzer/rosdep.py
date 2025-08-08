@@ -3,6 +3,7 @@
 
 from pathlib import Path
 from pathlib import PurePosixPath
+import re
 from typing import Any
 from typing import Dict
 from typing import List
@@ -61,6 +62,16 @@ EOL_PLATFORMS = {
         'mantic',
     },
 }
+
+
+DEB_SUFFIX_MATCHER = re.compile(r'([a-zA-Z]+)\d+(-|$)')
+
+
+def _no_suffixes(packages):
+    for package in packages:
+        package, success = DEB_SUFFIX_MATCHER.subn(r'\1\2', package)
+        if success:
+            yield package
 
 
 def _check_key_names(criteria, annotations, changed_rosdeps, key_counts):
@@ -127,7 +138,7 @@ def _check_key_names(criteria, annotations, changed_rosdeps, key_counts):
                     ubuntu_rule = ubuntu_rule['packages']
             if not ubuntu_rule:
                 continue
-            if key not in ubuntu_rule:
+            if key not in ubuntu_rule and key not in _no_suffixes(ubuntu_rule):
                 recommendation = min(recommendation, Recommendation.NEUTRAL)
                 problems.add(
                     'New key names should typically match the Ubuntu '

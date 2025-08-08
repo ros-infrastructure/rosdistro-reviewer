@@ -128,6 +128,9 @@ CONTROL_RULES = {
                 },
             },
         },
+        'libcontrol-delta-dev': {
+            'ubuntu': ['libcontrol-delta3-dev'],
+        },
     },
     'python.yaml': {
         'python3-control-bravo': {
