@@ -3,6 +3,7 @@
 
 from pathlib import Path
 from pathlib import PurePosixPath
+import re
 from typing import Any
 from typing import Dict
 from typing import List
@@ -63,6 +64,16 @@ EOL_PLATFORMS = {
 }
 
 
+DEB_SUFFIX_MATCHER = re.compile(r'([a-zA-Z]+)\d+(-|$)')
+
+
+def _no_suffixes(packages):
+    for package in packages:
+        package, success = DEB_SUFFIX_MATCHER.subn(r'\1\2', package)
+        if success:
+            yield package
+
+
 def _check_key_names(criteria, annotations, changed_rosdeps, key_counts):
     # Bypass check if no new keys were added
     if not any(
@@ -116,7 +127,7 @@ def _check_key_names(criteria, annotations, changed_rosdeps, key_counts):
         for key, rules in changes.items():
             if not getattr(key, '__lines__', None):
                 continue
-            ubuntu_rule = rules.get('ubuntu', {})
+            ubuntu_rule = (rules or {}).get('ubuntu', {})
             if isinstance(ubuntu_rule, dict) and '*' in ubuntu_rule:
                 ubuntu_rule = ubuntu_rule['*']
             if isinstance(ubuntu_rule, dict):
@@ -127,7 +138,7 @@ def _check_key_names(criteria, annotations, changed_rosdeps, key_counts):
                     ubuntu_rule = ubuntu_rule['packages']
             if not ubuntu_rule:
                 continue
-            if key not in ubuntu_rule:
+            if key not in ubuntu_rule and key not in _no_suffixes(ubuntu_rule):
                 recommendation = min(recommendation, Recommendation.NEUTRAL)
                 problems.add(
                     'New key names should typically match the Ubuntu '
@@ -170,7 +181,7 @@ def _check_platforms(criteria, annotations, changed_rosdeps):
         ))
         for changes in changed_rosdeps.values()
         for rules in changes.values()
-        for os, rule in rules.items()
+        for os, rule in (rules or {}).items()
     ):
         return
 
@@ -184,7 +195,7 @@ def _check_platforms(criteria, annotations, changed_rosdeps):
     # New rules for unsupported OSs are not allowed
     for file, changes in changed_rosdeps.items():
         for rules in changes.values():
-            for os, rule in rules.items():
+            for os, rule in (rules or {}).items():
                 if os not in os_keys and getattr(os, '__lines__', None):
                     recommendation = Recommendation.DISAPPROVE
                     problems.add(
@@ -231,7 +242,7 @@ def _check_installers(criteria, annotations, changed_rosdeps):
         )
         for changes in changed_rosdeps.values()
         for rules in changes.values()
-        for os, rule in rules.items()
+        for os, rule in (rules or {}).items()
     ):
         return
 
@@ -242,7 +253,7 @@ def _check_installers(criteria, annotations, changed_rosdeps):
 
     for file, changes in changed_rosdeps.items():
         for rules in changes.values():
-            for os, rule in rules.items():
+            for os, rule in (rules or {}).items():
                 if os == '*' or not isinstance(rule, dict):
                     continue
                 try:
