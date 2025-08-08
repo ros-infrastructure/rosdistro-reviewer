@@ -11,8 +11,9 @@ from rosdistro_reviewer.review import Recommendation
 
 # The control prefix intentionally contains a violation
 # to verify that we only surface problems related to new lines
-CONTROL_PREFIX = 'alpha: \n  bravo: charlie\n'
-CONTROL_SUFFIX = 'yankee:\n  - zulu\n'
+EXISTING_PREFIX = 'alpha: \n  bravo: charlie\n'
+CONTROL_SUFFIX = 'whisky:\n  - x-ray\n'
+EXISTING_SUFFIX = 'yankee:\n  - zulu\n'
 
 
 @pytest.fixture
@@ -21,9 +22,20 @@ def repo_with_yaml(empty_repo) -> Iterable[Repo]:
     (repo_dir / 'subdir').mkdir()
 
     yaml_file = repo_dir / 'subdir' / 'file.yaml'
-    yaml_file.write_text(CONTROL_PREFIX)
+    yaml_file.write_text(''.join((
+        EXISTING_PREFIX,
+        EXISTING_SUFFIX,
+    )))
+
+    yamllint_file = repo_dir / '.yamllint'
+    yamllint_file.write_text('\n'.join((
+        'extends: default',
+        'rules:',
+        '  key-ordering: enable',
+    )))
 
     empty_repo.index.add(str(yaml_file))
+    empty_repo.index.add(str(yamllint_file))
     empty_repo.index.commit('Add YAML files')
 
     return empty_repo
@@ -50,6 +62,10 @@ VIOLATIONS = (
     'golf:\n   hotel: null',
     # Too many spaces
     'india:  null',
+    # Should be placed earlier
+    'alph: null',
+    # Should be placed later
+    'zulu-2: null',
 )
 
 
@@ -58,8 +74,9 @@ def test_control(repo_with_yaml):
     extension = YamllintAnalyzer()
 
     (repo_dir / 'subdir' / 'file.yaml').write_text(''.join((
-        CONTROL_PREFIX,
+        EXISTING_PREFIX,
         CONTROL_SUFFIX,
+        EXISTING_SUFFIX,
     )))
 
     criteria, annotations = extension.analyze(repo_dir)
@@ -73,17 +90,19 @@ def test_target_ref(repo_with_yaml):
 
     yaml_file = repo_dir / 'subdir' / 'file.yaml'
     yaml_file.write_text(''.join((
-        CONTROL_PREFIX,
+        EXISTING_PREFIX,
         CONTROL_SUFFIX,
+        EXISTING_SUFFIX,
     )))
 
     repo_with_yaml.index.add(str(yaml_file))
     repo_with_yaml.index.commit('Add more to the YAML file')
 
     yaml_file.write_text(''.join((
-        CONTROL_PREFIX,
+        EXISTING_PREFIX,
         'problem:  line \n',
         CONTROL_SUFFIX,
+        EXISTING_SUFFIX,
     )))
 
     criteria, annotations = extension.analyze(repo_dir, head_ref='HEAD')
@@ -100,9 +119,10 @@ def test_yamllint_config(repo_with_yaml):
     extension = YamllintAnalyzer()
 
     (repo_dir / 'subdir' / 'file.yaml').write_text(''.join((
-        CONTROL_PREFIX,
+        EXISTING_PREFIX,
         'delta: null  # comment\n',
         CONTROL_SUFFIX,
+        EXISTING_SUFFIX,
     )))
 
     criteria, annotations = extension.analyze(repo_dir)
@@ -114,6 +134,7 @@ def test_yamllint_config(repo_with_yaml):
         'rules:',
         '  comments:',
         '    min-spaces-from-content: 4',
+        '  key-ordering: enable',
     )))
 
     criteria, annotations = extension.analyze(repo_dir)
@@ -137,9 +158,10 @@ def test_violation(repo_with_yaml, violation):
     extension = YamllintAnalyzer()
 
     (repo_dir / 'subdir' / 'file.yaml').write_text(''.join((
-        CONTROL_PREFIX,
+        EXISTING_PREFIX,
         violation + '\n',
         CONTROL_SUFFIX,
+        EXISTING_SUFFIX,
     )))
 
     criteria, annotations = extension.analyze(repo_dir)
