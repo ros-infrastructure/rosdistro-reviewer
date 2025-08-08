@@ -21,7 +21,7 @@ INTRODUCTION = """Thanks for sending a pull request to ROS distro!
 This is an automated tool that helps check your pull request for correctness.
 This tool checks a number of attributes associated with your ROS package and generates a report that helps our reviewers merge your pull request in a timely fashion. Here are a few things to consider when sending adding or updating a package to ROS Distro.
 ROS Distro includes a very helpful [CONTRIBUTING.md](https://github.com/ros/rosdistro/blob/master/CONTRIBUTING.md) file that we recommend reading if it is your first time submitting a package.
-Please also read the [ROS Distro review guidelines](https://github.com/rosdistro/rosdistro/blob/master/REVIEW_GUIDELINES.md) which summarizes this release process.
+Please also read the [ROS Distro review guidelines](https://github.com/ros/rosdistro/blob/master/REVIEW_GUIDELINES.md) which summarizes this release process.
 
 # ROS Distro Considerations
 * ROS Distributions are created using [REP-134 Standards Track](https://ros.org/reps/rep-0143.html) as a guide.

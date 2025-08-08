@@ -10,7 +10,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'rosdistro-reviewer'
-copyright = '2025 Open Source Robotics Foundation, Inc'
+copyright = '2025 Open Source Robotics Foundation, Inc'  # noqa: A001
 author = 'Scott K Logan'
 
 # -- General configuration ---------------------------------------------------
