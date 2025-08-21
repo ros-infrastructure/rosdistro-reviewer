@@ -101,10 +101,8 @@ EXISTING_RULES = {
         },
     },
     'python.yaml': {
-        'python.yaml': {
-            'python3-existing-india': {
-                'fedora': ['python3-existing-india'],
-            },
+        'python3-existing-india': {
+            'fedora': ['python3-existing-india'],
         },
     },
 }
@@ -148,10 +146,10 @@ CONTROL_RULES = {
             },
             'ubuntu': ['python3-control-bravo'],
         },
-        'python3-control-bravo-pip': {
+        'python3-control-kilo-pip': {
             '*': {
                 'pip': {
-                    'packages': ['python3-control-bravo'],
+                    'packages': ['python3-control-kilo'],
                 },
             },
         },
@@ -273,6 +271,18 @@ VIOLATIONS = {
                         'pip': {
                             'packages': ['juliet'],
                         },
+                    },
+                },
+            },
+        },
+    },
+    'K': {
+        # There is already a non-pip key "python3-existing-india"
+        'python.yaml': {
+            'python3-existing-india-pip': {
+                '*': {
+                    'pip': {
+                        'packages': ['existing-india'],
                     },
                 },
             },
