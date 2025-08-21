@@ -306,6 +306,46 @@ def _check_installers(criteria, annotations, changed_rosdeps):
     criteria.append(Criterion(recommendation, message))
 
 
+def _check_suitability(criteria, annotations, changed_rosdeps, key_counts):
+    # Bypass check if no new keys were added
+    if not any(
+        getattr(key, '__lines__', None)
+        for changes in changed_rosdeps.values()
+        for key in changes.keys()
+    ):
+        return
+
+    recommendation = Recommendation.APPROVE
+    problems = set()
+
+    # Pip rules should not be added when there is already a non-pip one
+    for file, changes in changed_rosdeps.items():
+        for key, rules in changes.items():
+            if not getattr(key, '__lines__', None):
+                continue
+            if not key.endswith('-pip'):
+                continue
+            non_pip_key = key[:-4]
+            if key_counts.get(non_pip_key, 0) >= 1:
+                recommendation = Recommendation.DISAPPROVE
+                problems.add(
+                    'Rules exclusively for pip may not be added when there '
+                    'are system packages available')
+                annotations.append(Annotation(
+                    file,
+                    key.__lines__,
+                    f'There is already a non-pip key for {non_pip_key}'))
+
+    if problems:
+        message = '\n- '.join([
+            'There are problems with rosdep key suitability:',
+        ] + sorted(problems))
+    else:
+        message = 'New keys appear suitable for rosdep'
+
+    criteria.append(Criterion(recommendation, message))
+
+
 def _is_yaml_blob(item, depth) -> bool:
     return PurePosixPath(item.path).suffix == '.yaml'
 
@@ -386,5 +426,6 @@ class RosdepAnalyzer(ElementAnalyzerExtensionPoint):
         _check_key_names(criteria, annotations, changed_rosdeps, key_counts)
         _check_platforms(criteria, annotations, changed_rosdeps)
         _check_installers(criteria, annotations, changed_rosdeps)
+        _check_suitability(criteria, annotations, changed_rosdeps, key_counts)
 
         return criteria, annotations
