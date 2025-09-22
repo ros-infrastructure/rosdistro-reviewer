@@ -138,6 +138,9 @@ CONTROL_RULES = {
                 'apt': None,
             },
         },
+        'libecho': {
+            'ubuntu': ['libechot64'],
+        },
     },
     'python.yaml': {
         'python3-control-bravo': {

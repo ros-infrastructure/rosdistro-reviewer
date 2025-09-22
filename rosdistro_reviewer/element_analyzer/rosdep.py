@@ -64,7 +64,10 @@ EOL_PLATFORMS = {
 }
 
 
-DEB_SUFFIX_MATCHER = re.compile(r'([a-zA-Z]+)\d+(-|$)')
+# Two cases here:
+# 1. Name segments with trailing digits drop the digits
+# 2. Names ending with `t64` drop that suffix
+DEB_SUFFIX_MATCHER = re.compile(r'([a-zA-Z]+?)(?:t64$|\d+(-|$))')
 
 
 def _no_suffixes(packages):
