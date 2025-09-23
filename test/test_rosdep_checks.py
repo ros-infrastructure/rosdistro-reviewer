@@ -141,6 +141,9 @@ CONTROL_RULES = {
         'libecho': {
             'ubuntu': ['libechot64'],
         },
+        'foxtrot4t64': {
+            'ubuntu': ['foxtrot4t64'],
+        },
     },
     'python.yaml': {
         'python3-control-bravo': {
