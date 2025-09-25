@@ -69,8 +69,13 @@ DEB_SUFFIX_MATCHER = re.compile(r'([a-zA-Z]+)\d+(-|$)')
 
 def _no_suffixes(packages):
     for package in packages:
-        package, success = DEB_SUFFIX_MATCHER.subn(r'\1\2', package)
-        if success:
+        changed = False
+        if package.endswith('t64'):
+            package = package[:-3]
+            changed = True
+        package, substituted = DEB_SUFFIX_MATCHER.subn(r'\1\2', package)
+        changed |= substituted
+        if changed:
             yield package
 
 
