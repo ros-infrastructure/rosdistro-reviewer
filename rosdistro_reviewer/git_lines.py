@@ -88,6 +88,8 @@ def get_added_lines(
                     for line in hunk:
                         if line.line_type != unidiff.LINE_TYPE_ADDED:
                             continue
+                        if line.target_line_no is None:
+                            continue
                         lines.setdefault(
                             os.path.normpath(file.path),
                             []).append(line.target_line_no)
