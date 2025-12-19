@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: python -m pip install .[doc,github]
       - run: make -C doc html "SPHINXOPTS=--fail-on-warning --keep-going"
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: doc/_build/html
   yamllint:
