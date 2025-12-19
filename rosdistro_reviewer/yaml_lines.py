@@ -6,15 +6,15 @@ import yaml
 
 class AnnotatedSafeLoader(yaml.SafeLoader):
     """
-    YAML loader that adds '__lines__' attributes to some of the parsed data.
+    YAML loader that adds ``__lines__`` attributes to some of the parsed data.
 
     This extension of the PyYAML SafeLoader replaces some basic types with
-    derived types that include a '__lines__' attribute to determine where
+    derived types that include a ``__lines__`` attribute to determine where
     the deserialized data can be found in the YAML file it was parsed from.
     """
 
     class AnnotatedDict(dict):
-        """Implementation of 'dict' with '__lines__' attribute."""
+        """Implementation of ``dict`` with ``__lines__`` attribute."""
 
         __slots__ = ('__lines__',)
 
@@ -22,7 +22,7 @@ class AnnotatedSafeLoader(yaml.SafeLoader):
             return super().__init__(*args, **kwargs)
 
     class AnnotatedList(list):
-        """Implementation of 'list' with '__lines__' attribute."""
+        """Implementation of ``list`` with ``__lines__`` attribute."""
 
         __slots__ = ('__lines__',)
 
@@ -30,7 +30,7 @@ class AnnotatedSafeLoader(yaml.SafeLoader):
             return super().__init__(*args, **kwargs)
 
     class AnnotatedStr(str):
-        """Implementation of 'str' with '__lines__' attribute."""
+        """Implementation of ``str`` with ``__lines__`` attribute."""
 
         __slots__ = ('__lines__',)
 
