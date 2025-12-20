@@ -27,7 +27,7 @@ If you'd like to contribute code to `rosdistro-reviewer`, we welcome your pull r
 2.  Make your changes. Try to keep your changes small and focused on a single feature or bug fix.
 3.  Ensure your code is well-documented and follows the project's coding style.
 4.  Add or update unit tests as appropriate.
-5.  Open a `pull request <https://github.com/ros-infrastructure/rosdistro-reviewer/pulls>`_ with a clear title and description of your changes.
+5.  Open a `pull request <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork>`_ with a clear title and description of your changes.
 
 Running Tests and Linters
 =========================
