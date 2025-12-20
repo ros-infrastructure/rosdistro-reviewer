@@ -1,7 +1,7 @@
 Writing Element Analyzers
 =========================
 
-Element Analyzers are plugins for `rosdistro-reviewer` that analyze changes in a git repository and provide feedback. They are the primary mechanism for extending the functionality of `rosdistro-reviewer` with new checks.
+Element Analyzers are plugins for ``rosdistro-reviewer`` that analyze changes in a git repository and provide feedback. They are the primary mechanism for extending the functionality of ``rosdistro-reviewer`` with new checks.
 
 Each analyzer is responsible for a specific type of analysis, such as linting, style checking, or validating the structure of specific files.
 
@@ -28,11 +28,11 @@ The :py:meth:`~.ElementAnalyzerExtensionPoint.analyze` is the entry point for yo
        head_ref: Optional[str] = None,
    ) -> Tuple[Optional[List[Criterion]], Optional[List[Annotation]]]:
 
-*   `path`: A `pathlib.Path` object pointing to the root of the git repository.
-*   `target_ref`: The git ref of the base of the comparison (e.g., the target branch of a pull request).
-*   `head_ref`: The git ref of the head of the comparison (e.g., the source branch of a pull request).
+*   ``path``: A :py:class:`pathlib.Path` object pointing to the root of the git repository.
+*   ``target_ref``: The git ref of the base of the comparison (e.g., the target branch of a pull request).
+*   ``head_ref``: The git ref of the head of the comparison (e.g., the source branch of a pull request).
 
-The method should return a tuple containing a list of `Criterion` objects and a list of `Annotation` objects. If no analysis is performed, it can return `(None, None)`.
+The method should return a tuple containing a list of ``Criterion`` objects and a list of ``Annotation`` objects. If no analysis is performed, it can return ``(None, None)``.
 
 Plugin Registration
 ~~~~~~~~~~~~~~~~~~~
@@ -53,7 +53,7 @@ Analyzers use three main data structures to represent the :py:class:`~.rosdistro
 Recommendation
 ~~~~~~~~~~~~~~
 
-The :py:class:`~.rosdistro_reviewer.review.Recommendation` is an `IntEnum` that represents the overall outcome of a criterion. It has three possible values:
+The :py:class:`~.rosdistro_reviewer.review.Recommendation` is an :py:class:`~.enum.IntEnum` that represents the overall outcome of a criterion. It has three possible values:
 
 *   :py:attr:`Recommendation.APPROVE`: The changes satisfy the criterion.
 *   :py:attr:`Recommendation.NEUTRAL`: The changes are not applicable to the criterion, or the analysis is inconclusive.
@@ -62,10 +62,10 @@ The :py:class:`~.rosdistro_reviewer.review.Recommendation` is an `IntEnum` that 
 Criterion
 ~~~~~~~~~
 
-A :py:class:`~.rosdistro_reviewer.review.Criterion` is a `namedtuple` that represents a single check performed by the analyzer. It has two fields:
+A :py:class:`~.rosdistro_reviewer.review.Criterion` is a :py:func:`~.collections.namedtuple` that represents a single check performed by the analyzer. It has two fields:
 
-*   `recommendation`: A `Recommendation` enum value.
-*   `rationale`: A string explaining the reason for the recommendation.
+*   ``recommendation``: A ``Recommendation`` enum value.
+*   ``rationale``: A string explaining the reason for the recommendation.
 
 .. code-block:: python
 
@@ -80,11 +80,11 @@ A :py:class:`~.rosdistro_reviewer.review.Criterion` is a `namedtuple` that repre
 Annotation
 ~~~~~~~~~~
 
-An :py:class:`~.rosdistro_reviewer.review.Annotation` is a `namedtuple` used to attach a message to a specific line or range of lines in a file. This is useful for providing detailed feedback directly on the code. It has three fields:
+An :py:class:`~.rosdistro_reviewer.review.Annotation` is a :py:func:`~.collections.namedtuple` used to attach a message to a specific line or range of lines in a file. This is useful for providing detailed feedback directly on the code. It has three fields:
 
-*   `file`: The path to the file being annotated.
-*   `lines`: A `range` object specifying the line number(s) for the annotation.
-*   `message`: The feedback message.
+*   ``file``: The path to the file being annotated.
+*   ``lines``: A :py:class:`range` object specifying the line number(s) for the annotation.
+*   ``message``: The feedback message.
 
 .. code-block:: python
 
