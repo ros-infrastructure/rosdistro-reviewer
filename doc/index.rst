@@ -5,4 +5,6 @@
    :hidden:
    :caption: API Documentation
 
+   contributing
+   element_analyzers
    api/rosdistro_reviewer
