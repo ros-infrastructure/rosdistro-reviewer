@@ -14,6 +14,19 @@ To create a new Element Analyzer, you need to:
 2.  Implement the :py:meth:`~.ElementAnalyzerExtensionPoint.analyze` in your class.
 3.  Register your class as a plugin in your `setup.cfg` file.
 
+Create a new class
+~~~~~~~~~~~~~~~~~~
+
+Create a new class that inherits from ``ElementAnalyzerExtensionPoint``.
+
+.. code-block:: python
+
+   from rosdistro_reviewer.element_analyzer import ElementAnalyzerExtensionPoint
+
+   class TodoChecker(ElementAnalyzerExtensionPoint):
+
+        # ...
+
 The `analyze` method
 ~~~~~~~~~~~~~~~~~~~~
 
