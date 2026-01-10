@@ -30,7 +30,7 @@ Please also read the [ROS Distro review guidelines](https://github.com/ros/rosdi
 * Your package must contain an [OSI approved license](https://opensource.org/licenses). Your `package.xml` file must also include that license in a machine readable format. See [REP-149 Package Manifest Format Three Specification](https://ros.org/reps/rep-0149.html#license-multiple-but-at-least-one) for additional details.
 * A publicly available, open source, repository for your ROS package.
 * While not required, we recommend that you create an account for ROS Discourse and subscribe to the [appropriate release topic](https://discourse.ros.org/c/release/16).
-* If you would like, you may join our [Discord Server](https://discord.com/servers/open-robotics-1077825543698927656) and ask questions in the `#infra-help` channel.
+* If you would like, you may join our [Zulip Server](https://openrobotics.zulipchat.com/) and ask questions in the `Infrastructure General` channel.
 
 # Package Considerations
 
@@ -43,7 +43,7 @@ Having your package included in a ROS Distro is a badge of quality, and we recom
 
 # Need Help?
 
-Please post your questions to [Robotics Stack Exchange](https://docs.ros.org/) or refer to the `#infra-help` channel on our [Discord server](https://discord.com/servers/open-robotics-1077825543698927656).
+Please post your questions to [Robotics Stack Exchange](https://docs.ros.org/) or refer to the `Infrastructure General` channel on our [Zulip server](https://openrobotics.zulipchat.com/).
 
 ---
 
