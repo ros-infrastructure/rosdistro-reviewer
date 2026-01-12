@@ -39,6 +39,7 @@ mypy
 namedtuple
 noop
 noqa
+openrobotics
 opensource
 patchset
 pathlib
@@ -73,4 +74,6 @@ yakkety
 yaml
 yamllint
 yankee
+zulip
+zulipchat
 zulu
