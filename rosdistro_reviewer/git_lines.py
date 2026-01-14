@@ -76,8 +76,9 @@ def get_added_lines(
         for diff in diffs:
             if not diff.b_path:
                 continue
-            patch = f"""--- {diff.a_path if diff.a_path else '/dev/null'}
-+++ {diff.b_path}"""
+            source_file = ('a/' + diff.a_path) if diff.a_path else '/dev/null'
+            patch = f"""--- {source_file}
++++ b/{diff.b_path}"""
             if isinstance(diff.diff, str):
                 patch += '\n' + diff.diff
             elif isinstance(diff.diff, bytes):
