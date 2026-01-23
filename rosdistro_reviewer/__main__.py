@@ -5,5 +5,4 @@ import sys
 
 from rosdistro_reviewer.command import main
 
-
 sys.exit(main())

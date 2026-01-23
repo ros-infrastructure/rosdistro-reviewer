@@ -4,11 +4,12 @@
 import os
 from typing import Any
 
-from colcon_core.command \
-    import LOG_LEVEL_ENVIRONMENT_VARIABLE \
-    as COLCON_LOG_LEVEL_ENVIRONMENT_VARIABLE
+from colcon_core.command import (
+    LOG_LEVEL_ENVIRONMENT_VARIABLE as COLCON_LOG_LEVEL_ENVIRONMENT_VARIABLE,
+)
 from colcon_core.command import main as colcon_main
 from colcon_core.environment_variable import EnvironmentVariable
+
 from rosdistro_reviewer.verb.review import ReviewVerb
 
 """Environment variable to set the log level"""

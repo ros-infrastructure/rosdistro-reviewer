@@ -3,8 +3,9 @@
 
 from pathlib import Path
 
-from rosdistro_reviewer.yaml_lines import AnnotatedSafeLoader
 import yaml
+
+from rosdistro_reviewer.yaml_lines import AnnotatedSafeLoader
 
 
 def _get_key_and_val(data, key):

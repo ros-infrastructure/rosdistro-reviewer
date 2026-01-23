@@ -85,7 +85,7 @@ def submit_review(args, review, *, extensions=None) -> None:
     for submitter_name, extension in extensions.items():
         try:
             extension.submit(args, review)
-        except Exception as e:  # noqa: F841
+        except Exception as e:  # noqa: F841, BLE001
             exc = traceback.format_exc()
             logger.error(
                 'Exception in review submitter extension '

@@ -1,8 +1,8 @@
 # Copyright 2016-2018 Dirk Thomas
 # Licensed under the Apache License, Version 2.0
 
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import List
 
 import pytest

@@ -9,20 +9,20 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
+import yaml
 from colcon_core.logging import colcon_logger
 from colcon_core.plugin_system import satisfies_version
 from git import Repo
 from git.objects import Blob
-from rosdistro_reviewer.element_analyzer \
-    import ElementAnalyzerExtensionPoint
+from yamllint import linter
+from yamllint.config import YamlLintConfig
+
+from rosdistro_reviewer.element_analyzer import ElementAnalyzerExtensionPoint
 from rosdistro_reviewer.git_lines import get_added_lines
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Criterion
 from rosdistro_reviewer.review import Recommendation
 from rosdistro_reviewer.yaml_lines import AnnotatedSafeLoader
-import yaml
-from yamllint import linter
-from yamllint.config import YamlLintConfig
 
 logger = colcon_logger.getChild(__name__)
 

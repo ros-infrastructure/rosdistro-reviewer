@@ -3,8 +3,8 @@
 
 from typing import Iterable
 
-from git import Repo
 import pytest
+from git import Repo
 
 
 @pytest.fixture
