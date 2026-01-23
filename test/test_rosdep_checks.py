@@ -5,11 +5,12 @@ import itertools
 from pathlib import Path
 from typing import Iterable
 
-from git import Repo
 import pytest
+import yaml
+from git import Repo
+
 from rosdistro_reviewer.element_analyzer.rosdep import RosdepAnalyzer
 from rosdistro_reviewer.review import Recommendation
-import yaml
 
 
 @pytest.fixture

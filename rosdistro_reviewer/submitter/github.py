@@ -8,6 +8,7 @@ from colcon_core.environment_variable import EnvironmentVariable
 from colcon_core.logging import colcon_logger
 from colcon_core.logging import get_effective_console_level
 from colcon_core.plugin_system import satisfies_version
+
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Recommendation
 from rosdistro_reviewer.submitter import ReviewSubmitterExtensionPoint
