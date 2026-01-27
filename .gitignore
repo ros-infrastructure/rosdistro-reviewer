@@ -1,4 +1,6 @@
 /dist/
 /*.egg-info/
 /.coverage
-__pycache__
+/COLCON_IGNORE
+.*.swp
+__pycache__/
