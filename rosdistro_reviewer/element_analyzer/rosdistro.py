@@ -10,11 +10,59 @@ from git import Repo
 from rosdistro_reviewer.element_analyzer import ElementAnalyzerExtensionPoint
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Criterion
+from rosdistro_reviewer.review import Recommendation
 from rosdistro_reviewer.yaml_changes import get_changed_yaml
 from rosdistro_reviewer.yaml_changes import prune_changed_yaml
 import yaml
 
 logger = colcon_logger.getChild(__name__)
+
+
+def _check_duplicates(criteria, annotations, index, entities):
+    # Bypass check if no repo or package names were added/modified
+    if not any(
+        getattr(repo_name, '__lines__', None) or any(
+            getattr(package, '__lines__', None)
+            for package in repo.get('release', {}).get('packages', ())
+        )
+        for distro in (index or {}).values()
+        for repos in (distro or {}).values()
+        for repo_name, repo in (repos or {}).items()
+    ):
+        return
+
+    recommendation = Recommendation.APPROVE
+
+    # Names should be unique
+    for distro_name, distro_file, repo_name, repo in (
+        (distro_name, distro_file, repo_name, repo)
+        for distro_name, distro in (index or {}).items()
+        for distro_file, repos in (distro or {}).items()
+        for repo_name, repo in (repos or {}).items()
+    ):
+        entities_to_check = (
+            name for name in
+            (repo_name, *repo.get('release', {}).get('packages', []))
+            if getattr(name, '__lines__', None)
+        )
+        for entity in entities_to_check:
+            for other_repo in entities.get(distro_name, {}).get(entity, ()):
+                if other_repo == repo_name:
+                    continue
+
+                recommendation = Recommendation.DISAPPROVE
+                annotations.append(Annotation(
+                    distro_file, entity.__lines__,
+                    'This name is already used by the '
+                    f"'{other_repo}' repository"))
+                break
+
+    if recommendation != Recommendation.APPROVE:
+        message = 'There are problems with naming collision'
+    else:
+        message = 'New packages and repositories have unique names'
+
+    criteria.append(Criterion(recommendation, message))
 
 
 def _read_index(
@@ -124,5 +172,7 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
             return None, None
 
         logger.info('Performing analysis on ROS distribution changes...')
+
+        _check_duplicates(criteria, annotations, index, entities)
 
         return criteria, annotations
