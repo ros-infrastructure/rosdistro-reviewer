@@ -8,10 +8,11 @@ from typing import Iterable
 from typing import Mapping
 from typing import Optional
 
+import yaml
 from git import Repo
+
 from rosdistro_reviewer.git_lines import get_added_lines
 from rosdistro_reviewer.yaml_lines import AnnotatedSafeLoader
-import yaml
 
 
 def _contains(needle: Optional[range], haystack: Iterable[range]) -> bool:

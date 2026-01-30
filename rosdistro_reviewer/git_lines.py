@@ -9,8 +9,8 @@ from typing import Mapping
 from typing import Optional
 from typing import Sequence
 
-from git import Repo
 import unidiff
+from git import Repo
 
 
 def _rangeify(sequence: Iterable[int]) -> Iterable[range]:

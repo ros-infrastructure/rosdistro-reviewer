@@ -45,7 +45,6 @@ patchset
 pathlib
 plugin
 prepend
-pycqa
 pytest
 rangeify
 representer

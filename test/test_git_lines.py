@@ -1,9 +1,10 @@
 # Copyright 2024 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import pytest
 from git import Head
 from git import Repo
-import pytest
+
 from rosdistro_reviewer.git_lines import get_added_lines
 
 
