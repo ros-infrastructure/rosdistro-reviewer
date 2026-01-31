@@ -90,7 +90,10 @@ def _read_index(
 
     # 2. Enumerate the files in each distribution
     all_dist_files = {
-        dist_name: dist.get('distribution') or []
+        dist_name:  [
+            str(Path(dist_file))
+            for dist_file in (dist.get('distribution') or [])
+        ]
         for dist_name, dist in index['distributions'].items()
     }
     unique_dist_files = {
