@@ -78,9 +78,21 @@ def analyze(
     :returns: A new review instance, or None if no
       analyzer extensions performed any analysis
     """
+    # We delay this import until after the GitPython
+    # logger has already been configured to avoid DEBUG
+    # messages on the console at import time
+    from git import Repo
     if extensions is None:
         extensions = get_element_analyzer_extensions()
-    review = Review()
+    if target_ref or head_ref:
+        # Resolve the target_ref and head_ref from a commit-ish
+        # to an actual SHA
+        with Repo(path) as repo:
+            if target_ref:
+                target_ref = repo.commit(target_ref).hexsha
+            if head_ref:
+                head_ref = repo.commit(head_ref).hexsha
+    review = Review(head_ref=head_ref)
     for analyzer_name, extension in extensions.items():
         criteria, annotations = extension.analyze(path, target_ref, head_ref)
 

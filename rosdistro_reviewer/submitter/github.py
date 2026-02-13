@@ -3,6 +3,8 @@
 
 import logging
 import os
+from typing import Any
+from typing import Dict
 
 from colcon_core.environment_variable import EnvironmentVariable
 from colcon_core.logging import colcon_logger
@@ -115,6 +117,10 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
         repo = github.get_repo(repo_id)
         pr = repo.get_pull(pr_id)
 
+        create_review_args: Dict[str, Any] = {}
+        if review.head_ref:
+            create_review_args['commit'] = repo.get_commit(review.head_ref)
+
         message = review.summarize()
         recommendation = review.recommendation
 
@@ -128,4 +134,5 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
         pr.create_review(
             body=message,
             event=RECOMMENDATION_EVENTS[recommendation],
-            comments=comments)
+            comments=comments,
+            **create_review_args)
