@@ -110,8 +110,8 @@ class Review:
 
     def __init__(self):
         """Initialize a new instance of a Review."""
-        self._annotations = []
-        self._elements = {}
+        self._annotations: List[Annotation] = []
+        self._elements: Dict[str, List[Criterion]] = {}
 
     @property
     def annotations(self) -> List[Annotation]:
