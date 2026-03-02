@@ -1,9 +1,9 @@
 # Copyright 2024 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import re
 from pathlib import Path
 from pathlib import PurePosixPath
-import re
 from typing import Any
 from typing import Dict
 from typing import List
@@ -16,8 +16,8 @@ from git import Repo
 from git.objects import Blob
 from git.objects import Tree
 from rosdep2 import create_default_installer_context
-from rosdistro_reviewer.element_analyzer \
-    import ElementAnalyzerExtensionPoint
+
+from rosdistro_reviewer.element_analyzer import ElementAnalyzerExtensionPoint
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Criterion
 from rosdistro_reviewer.review import Recommendation

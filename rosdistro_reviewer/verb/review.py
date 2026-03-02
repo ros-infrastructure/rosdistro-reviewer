@@ -8,6 +8,7 @@ from colcon_core.logging import colcon_logger
 from colcon_core.logging import get_effective_console_level
 from colcon_core.plugin_system import satisfies_version
 from colcon_core.verb import VerbExtensionPoint
+
 from rosdistro_reviewer.element_analyzer import analyze
 from rosdistro_reviewer.submitter import add_review_submitter_arguments
 from rosdistro_reviewer.submitter import submit_review
@@ -17,8 +18,8 @@ def _find_repo_root():
     # We delay this import until after the GitPython
     # logger has already been configured to avoid DEBUG
     # messages on the console at import time
-    from git import Repo
     from git import InvalidGitRepositoryError
+    from git import Repo
     try:
         with Repo(Path.cwd(), search_parent_directories=True) as repo:
             return Path(repo.working_tree_dir)
