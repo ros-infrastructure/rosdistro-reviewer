@@ -70,6 +70,8 @@ def test_verb_review(empty_repo):
     context = CommandContext(
         command_name='rosdistro-reviewer',
         args=Mock())
+    context.args.head_ref = None
+    context.args.target_ref = None
 
     with patch(
         'rosdistro_reviewer.verb.review.Path.cwd',

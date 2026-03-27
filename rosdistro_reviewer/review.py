@@ -108,10 +108,15 @@ Criterion = namedtuple('Criterion', ('recommendation', 'rationale'))
 class Review:
     """High-level representation of a rosdistro code review."""
 
-    def __init__(self):
-        """Initialize a new instance of a Review."""
+    def __init__(self, *, head_ref: Optional[str] = None):
+        """
+        Initialize a new instance of a Review.
+
+        :param head_ref: The git ref where the changes have been made
+        """
         self._annotations: List[Annotation] = []
         self._elements: Dict[str, List[Criterion]] = {}
+        self._head_ref = head_ref
 
     @property
     def annotations(self) -> List[Annotation]:
@@ -122,6 +127,11 @@ class Review:
     def elements(self) -> Dict[str, List[Criterion]]:
         """Get the mapping of element name to criteria collection."""
         return self._elements
+
+    @property
+    def head_ref(self) -> Optional[str]:
+        """Get the git ref where the changes have been made."""
+        return self._head_ref
 
     @property
     def recommendation(self) -> Recommendation:
