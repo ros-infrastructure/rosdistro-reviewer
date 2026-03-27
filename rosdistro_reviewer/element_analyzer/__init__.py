@@ -8,6 +8,7 @@ from typing import Optional
 from typing import Tuple
 
 from colcon_core.plugin_system import instantiate_extensions
+
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Criterion
 from rosdistro_reviewer.review import Review

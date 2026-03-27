@@ -8,9 +8,10 @@ from typing import Tuple
 from unittest.mock import Mock
 from unittest.mock import patch
 
+import pytest
 from colcon_core.command import CommandContext
 from colcon_core.plugin_system import satisfies_version
-import pytest
+
 from rosdistro_reviewer.element_analyzer import ElementAnalyzerExtensionPoint
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Criterion

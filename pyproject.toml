@@ -1,3 +1,33 @@
 [build-system]
 requires = ["setuptools>=40.8.0"]
 build-backend = "setuptools.build_meta:__legacy__"
+
+[tool.ruff]
+target-version = "py38"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "A",   # flake8-builtins
+    "BLE", # flake8-blind-except
+    "C4",  # flake8-comprehensions
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "Q",   # flake8-quotes
+    "W",   # pycodestyle
+]
+ignore = []
+
+[tool.ruff.lint.isort]
+force-single-line = true
+order-by-type = false
+known-first-party = ["rosdistro_reviewer"]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+
+[tool.ruff.lint.per-file-ignores]
+# Replicating flake8 per-file-ignores if they were relevant, 
+# but they were mostly D (docstring) ignores.
+# "test/**": ["D101", "D102", "D103", "D104", "D105", "D107"]

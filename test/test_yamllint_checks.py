@@ -4,8 +4,9 @@
 from pathlib import Path
 from typing import Iterable
 
-from git import Repo
 import pytest
+from git import Repo
+
 from rosdistro_reviewer.element_analyzer.yamllint import YamllintAnalyzer
 from rosdistro_reviewer.review import Recommendation
 

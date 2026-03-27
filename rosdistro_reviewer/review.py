@@ -1,12 +1,12 @@
 # Copyright 2024 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
-from collections import namedtuple
-from enum import IntEnum
 import itertools
-from pathlib import Path
 import re
 import textwrap
+from collections import namedtuple
+from enum import IntEnum
+from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Optional
