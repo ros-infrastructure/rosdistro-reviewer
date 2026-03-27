@@ -138,6 +138,31 @@ CONTROL_DISTROS = {
 # To avoid collisions, each check should use unique repo names.
 VIOLATIONS = {
     '*': CONTROL_DISTROS,
+    'A': {
+        # This repo has packages with a naming collision
+        'rolling': {
+            'charlie': {
+                'release': {
+                    'packages': ['existing_alpha'],
+                },
+            },
+        },
+    },
+    'B': {
+        # These repos have packages which conflict with each other
+        'rolling': {
+            'delta': {
+                'release': {
+                    'packages': ['duplicate_name'],
+                },
+            },
+            'echo': {
+                'release': {
+                    'packages': ['duplicate_name'],
+                },
+            },
+        },
+    },
 }
 
 
