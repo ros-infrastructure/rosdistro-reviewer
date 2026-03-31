@@ -146,61 +146,58 @@ def mock_subprocess():
             if cmd[0] == 'git' and cmd[1] == 'clone':
                 dest = cmd[7]
                 os.makedirs(dest, exist_ok=True)
+                with open(os.path.join(dest, 'LICENSE'), 'w') as f:
+                    f.write('dummy license')
                 with open(os.path.join(dest, 'package.xml'), 'w') as f:
-                    f.write('<package><name>valid_package</name></package>')
+                    f.write('<package format="2"><name>valid_package</name>'
+                            '<version>1.0.0</version>'
+                            '<description>a</description>'
+                            '<maintainer email="a@a.a">a</maintainer>'
+                            '<license>Apache-2.0</license></package>')
             return MagicMock()
         mock_run.side_effect = default_side_effect
         yield mock_run
 
 
-def test_manifest_base_orchestration(rosdistro_index_repo, mock_subprocess):
-    from rosdistro_reviewer.element_analyzer.rosdistro import \
-        _check_source_repositories, ManifestCheck
-    from rosdistro_reviewer.review import Recommendation
-
-    class SimpleCheck(ManifestCheck):
-        def check(self, pxml_path, pxml_content):
-            if 'fail' in pxml_content:
-                return ['Found failure string']
-            return []
-
+def test_new_package_checks(rosdistro_index_repo, mock_subprocess):
     repo_dir = Path(rosdistro_index_repo.working_tree_dir)
-    
-    # Simulate a new repo
-    class AnnotatedStr(str): pass
-    repo_name = AnnotatedStr('new_repo')
-    repo_name.__lines__ = range(1, 2)
-    
-    index = {
+    extension = RosdistroAnalyzer()
+
+    # Case 1: Missing LICENSE and REP-144 violation
+    violation_rules = {
         'rolling': {
-            'rolling/distribution.yaml': {
-                repo_name: {
-                    'source': {
-                        'type': 'git',
-                        'url': 'https://example.com/new_repo.git',
-                        'version': 'main'
-                    }
-                }
-            }
-        }
+            'violation_repo': {
+                'source': {
+                    'type': 'git',
+                    'url': 'https://example.com/violation.git',
+                    'version': 'main',
+                },
+            },
+        },
     }
+    distros = _merge_distributions(EXISTING_DISTROS, violation_rules)
+    for distro_name, repos in distros.items():
+        file_path = repo_dir / distro_name / 'distribution.yaml'
+        with file_path.open('w') as f:
+            yaml.dump({'repositories': repos}, f)
 
-    criteria = []
-    annotations = []
-
-    # Mock git clone to provide a 'fail' manifest
     def side_effect(cmd, **kwargs):
         dest = cmd[7]
         os.makedirs(dest, exist_ok=True)
+        # Invalid name and NO license file
         with open(os.path.join(dest, 'package.xml'), 'w') as f:
-            f.write('<package>fail</package>')
+            f.write('<package format="2"><name>Invalid_Name</name>'
+                    '<version>1.0.0</version>'
+                    '<description>a</description>'
+                    '<maintainer email="a@a.a">a</maintainer>'
+                    '<license>Apache-2.0</license></package>')
         return MagicMock()
     mock_subprocess.side_effect = side_effect
 
-    _check_source_repositories(criteria, annotations, index, [SimpleCheck()])
-    
-    assert any('Found failure string' in c.rationale for c in criteria)
-    assert any(a.message == 'Found failure string' for a in annotations)
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria and annotations
+    assert any("missing a LICENSE file" in c.rationale for c in criteria)
+    assert any("does not follow REP-144" in c.rationale for c in criteria)
 
 
 # This is a list of violations to check for.
