@@ -231,3 +231,67 @@ def test_violation(rosdistro_index_repo, violation_distros):
     criteria, annotations = extension.analyze(repo_dir)
     assert criteria and annotations
     assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
+
+
+def test_package_collision_with_repo_name(rosdistro_index_repo):
+    repo_dir = Path(rosdistro_index_repo.working_tree_dir)
+    extension = RosdistroAnalyzer()
+
+    # EXISTING_DISTROS has repo 'existing_alpha'
+    # We add repo 'bravo' which has a package named 'existing_alpha'
+    violation_rules = {
+        'rolling': {
+            'bravo': {
+                'release': {
+                    'packages': ['existing_alpha'],
+                    'version': '1.0.0-0',
+                },
+            },
+        },
+    }
+    distros = _merge_distributions(EXISTING_DISTROS, violation_rules)
+    for distro_name, repos in distros.items():
+        file_path = repo_dir / distro_name / 'distribution.yaml'
+        with file_path.open('w') as f:
+            yaml.dump({'repositories': repos}, f)
+
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria and annotations
+    assert any('naming collision' in c.rationale for c in criteria)
+
+
+def test_package_collision_across_distros(rosdistro_index_repo):
+    repo_dir = Path(rosdistro_index_repo.working_tree_dir)
+    extension = RosdistroAnalyzer()
+
+    # EXISTING_DISTROS has repo 'existing_alpha' in 'rolling'
+    # Add repo 'alpha_other' in 'jazzy' with package 'existing_alpha'
+    violation_rules = {
+        'jazzy': {
+            'alpha_other': {
+                'release': {
+                    'packages': ['existing_alpha'],
+                    'version': '1.0.0-0',
+                },
+            },
+        },
+    }
+    distros = _merge_distributions(EXISTING_DISTROS, violation_rules)
+    for distro_name, repos in distros.items():
+        file_path = repo_dir / distro_name / 'distribution.yaml'
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        with file_path.open('w') as f:
+            yaml.dump({'repositories': repos}, f)
+        rosdistro_index_repo.index.add(str(file_path))
+
+    # Update index-v4.yaml to include 'jazzy'
+    index_path = repo_dir / 'index-v4.yaml'
+    with index_path.open('w') as f:
+        yaml.dump(_generate_index(distros.keys()), f)
+    rosdistro_index_repo.index.add(str(index_path))
+
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria and annotations
+    assert any('naming collision' in c.rationale for c in criteria)
+    assert any("already used by: 'existing_alpha' in rolling" in a.message
+               for a in annotations)

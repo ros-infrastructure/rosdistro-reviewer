@@ -32,6 +32,7 @@ def _check_duplicates(criteria, annotations, index, entities):
         return
 
     recommendation = Recommendation.APPROVE
+    problems = set()
 
     # Names should be unique
     for distro_name, distro_file, repo_name, repo in (
@@ -40,25 +41,43 @@ def _check_duplicates(criteria, annotations, index, entities):
         for distro_file, repos in (distro or {}).items()
         for repo_name, repo in (repos or {}).items()
     ):
+        repo_url = repo.get('release', {}).get('url') or \
+            repo.get('source', {}).get('url') or \
+            repo.get('doc', {}).get('url') or \
+            'unknown'
+
         entities_to_check = (
             name for name in
             (repo_name, *repo.get('release', {}).get('packages', []))
             if getattr(name, '__lines__', None)
         )
         for entity in entities_to_check:
-            for other_repo in entities.get(distro_name, {}).get(entity, ()):
-                if other_repo == repo_name:
-                    continue
+            # Check for collisions across the entire index
+            providers = entities.get(entity, {})
 
+            # providers is {url -> [(distro, repo_name)]}
+            other_providers = []
+            for url, info_list in providers.items():
+                for d_name, r_name in info_list:
+                    if d_name == distro_name and r_name == repo_name:
+                        # This is the current provider we are checking
+                        continue
+
+                    # Different repo name OR different URL is a collision
+                    if r_name != repo_name or url != repo_url:
+                        other_providers.append(f"'{r_name}' in {d_name}")
+
+            if other_providers:
                 recommendation = Recommendation.DISAPPROVE
+                msg = f"The name '{entity}' is already used by: " + \
+                      ', '.join(sorted(set(other_providers)))
+                problems.add(msg)
                 annotations.append(Annotation(
-                    distro_file, entity.__lines__,
-                    'This name is already used by the '
-                    f"'{other_repo}' repository"))
-                break
+                    distro_file, entity.__lines__, msg))
 
-    if recommendation != Recommendation.APPROVE:
-        message = 'There are problems with naming collision'
+    if problems:
+        message = '\n- '.join(['There are problems with naming collision:'] +
+                              sorted(problems))
     else:
         message = 'New packages and repositories have unique names'
 
@@ -155,18 +174,28 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
         # Re-structure the index by "entity" names (repo and package names).
         # This can be used by checks to correlate changes across distributions
         # and repositories.
-        entities: Dict[str, Dict[str, List[str]]] = {}
+        # Mapping: entity_name -> {repo_url -> [(distro_name, repo_name)]}
+        entities: Dict[str, Dict[str, List[Tuple[str, str]]]] = {}
         for distro_name, distro in index.items():
-            distro_entities = entities.setdefault(distro_name, {})
             for repos in (distro or {}).values():
                 for repo_name, repo in (repos or {}).items():
-                    distro_entities.setdefault(repo_name, []).append(repo_name)
+                    # Determine a unique identifier for the repository.
+                    # We prefer the release URL, then the source URL.
+                    repo_url = repo.get('release', {}).get('url') or \
+                        repo.get('source', {}).get('url') or \
+                        repo.get('doc', {}).get('url') or \
+                        'unknown'
+
+                    def add_entity(name):
+                        distro_list = entities.setdefault(name, {}).setdefault(
+                            repo_url, [])
+                        distro_list.append((distro_name, repo_name))
+
+                    add_entity(repo_name)
                     release = repo.get('release')
-                    if not release:
-                        continue
-                    for package in release.get('packages') or ():
-                        distro_entities.setdefault(package, []).append(
-                            repo_name)
+                    if release:
+                        for package in release.get('packages') or ():
+                            add_entity(package)
 
         # Prune the index down to only changed elements
         _prune_index(index)
