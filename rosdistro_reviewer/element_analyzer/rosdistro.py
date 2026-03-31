@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from colcon_core.logging import colcon_logger
@@ -81,6 +82,7 @@ def _check_duplicates(criteria, annotations, index, entities):
     else:
         message = 'New packages and repositories have unique names'
 
+    _validate_markdown(message)
     criteria.append(Criterion(recommendation, message))
 
 
@@ -128,12 +130,13 @@ def _read_index(
     if not all_dist_changes:
         return None
 
-    return {
+    result = {
         dist_name: {
             dist_file: all_dist_changes[dist_file].get('repositories') or []
             for dist_file in dist_files
         } for dist_name, dist_files in all_dist_files.items()
     }
+    return result
 
 
 def _prune_index(changed_distros):
@@ -146,6 +149,15 @@ def _prune_index(changed_distros):
                 del distro[distro_file]
         if not distro:
             del changed_distros[distro_name]
+
+
+def _validate_markdown(content: str) -> None:
+    """Ensure generated markdown is structurally sound."""
+    # Check for balanced backticks
+    if len(re.findall(r'(?<!`)`(?!`)', content)) % 2 != 0:
+        raise ValueError('Unbalanced single backticks in markdown')
+    if len(re.findall(r'```', content)) % 2 != 0:
+        raise ValueError('Unbalanced triple backticks in markdown')
 
 
 class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
