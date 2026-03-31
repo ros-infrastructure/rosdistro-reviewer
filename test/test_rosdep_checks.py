@@ -301,9 +301,11 @@ VIOLATIONS = {
 
 @pytest.fixture(autouse=True)
 def mock_subprocess():
-    with patch('rosdistro_reviewer.element_analyzer.rosdep.subprocess.run') as mock_run:
+    with patch(
+        'rosdistro_reviewer.element_analyzer.rosdep.subprocess.run'
+    ) as mock_run:
         mock_result = MagicMock()
-        mock_result.stdout = "No package found"
+        mock_result.stdout = 'No package found'
         mock_run.return_value = mock_result
         yield mock_run
 
@@ -331,12 +333,16 @@ def test_native_existence_violation(rosdep_repo, mock_subprocess):
             yaml.dump(data, f)
 
     # Override mock to simulate finding a native package for native-exists
-    mock_subprocess.return_value.stdout = "<h3>Package python3-native-exists</h3>"
+    mock_subprocess.return_value.stdout = \
+        '<h3>Package python3-native-exists</h3>'
 
     criteria, annotations = extension.analyze(repo_dir)
     assert criteria and annotations
     assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
-    assert any("Found native package(s) for `python3-native-exists-pip`" in c.rationale for c in criteria)
+    assert any(
+        'Found native package(s) for `python3-native-exists-pip`'
+        in c.rationale for c in criteria
+    )
 
 
 def pytest_generate_tests(metafunc):
