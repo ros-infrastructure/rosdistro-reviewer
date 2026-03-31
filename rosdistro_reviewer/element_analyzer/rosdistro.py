@@ -1,7 +1,12 @@
 # Copyright 2026 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import os
 from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from catkin_pkg.package import parse_package_string
@@ -134,8 +139,135 @@ def _prune_index(changed_distros):
             del changed_distros[distro_name]
 
 
-def _check_version_bumps(criteria, annotations, index):
+def _is_rep144_compliant(name: str) -> bool:
+    return bool(re.match(r'^[a-z][a-z0-9_]*$', name))
+
+
+def _is_any_modified(data: Any) -> bool:
+    if getattr(data, '__lines__', None) is not None:
+        return True
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if _is_any_modified(k) or _is_any_modified(v):
+                return True
+    elif isinstance(data, list):
+        for item in data:
+            if _is_any_modified(item):
+                return True
+    return False
+
+
+def _check_new_packages(criteria, annotations, index):
     recommendation = Recommendation.APPROVE
+    problems = set()
+
+    for distro_name, distro in (index or {}).items():
+        for distro_file, repos in (distro or {}).items():
+            for repo_name, repo in (repos or {}).items():
+                source = repo.get('source')
+                if not source or source.get('type') != 'git':
+                    continue
+
+                if not _is_any_modified(repo_name) and \
+                   not _is_any_modified(repo):
+                    continue
+
+                url = source.get('url')
+                version = source.get('version', 'master')
+                if not url:
+                    continue
+
+                logger.info(f'Analyzing new package source: {url}')
+                temp_dir = tempfile.mkdtemp()
+                try:
+                    subprocess.run(
+                        ['git', 'clone', '--depth', '1', '-b',
+                         version, url, temp_dir],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+
+                    # 1. Check for LICENSE file
+                    has_license = False
+                    for f in os.listdir(temp_dir):
+                        if f.lower() in [
+                            'license', 'license.txt', 'license.md', 'copying'
+                        ]:
+                            has_license = True
+                            break
+                    if not has_license:
+                        recommendation = min(
+                            recommendation, Recommendation.NEUTRAL)
+                        problems.add(
+                            f"New repository '{repo_name}' is "
+                            'missing a LICENSE file')
+                        annotations.append(
+                            Annotation(
+                                distro_file, repo_name.__lines__,
+                                'Missing LICENSE file in source repo')
+                        )
+
+                    # 2. Check REP-144 and package.xml
+                    package_xmls = []
+                    for root, _, files in os.walk(temp_dir):
+                        if 'package.xml' in files:
+                            pxml = os.path.join(root, 'package.xml')
+                            package_xmls.append(pxml)
+                            with open(pxml, 'r') as f:
+                                content = f.read()
+                                name_match = re.search(
+                                    r'<name>(.*?)</name>', content)
+                                if name_match:
+                                    pkg_name = name_match.group(1)
+                                    if not _is_rep144_compliant(pkg_name):
+                                        recommendation = min(
+                                            recommendation,
+                                            Recommendation.NEUTRAL)
+                                        problems.add(
+                                            f"Package '{pkg_name}' in "
+                                            f"'{repo_name}' does not follow "
+                                            'REP-144')
+                                        annotations.append(
+                                            Annotation(
+                                                distro_file,
+                                                repo_name.__lines__,
+                                                f"Package '{pkg_name}' "
+                                                'violates REP-144')
+                                        )
+
+                    if not package_xmls:
+                        recommendation = min(
+                            recommendation, Recommendation.NEUTRAL)
+                        problems.add(
+                            f"New repository '{repo_name}' does not contain "
+                            'any ROS packages (missing package.xml)')
+                        annotations.append(
+                            Annotation(
+                                distro_file, repo_name.__lines__,
+                                'No package.xml found in source repo')
+                        )
+
+                except subprocess.SubprocessError as e:
+                    logger.error(f'Error cloning/analyzing {url}: {e}')
+                    recommendation = min(
+                        recommendation, Recommendation.NEUTRAL)
+                    problems.add(
+                        f"Could not analyze new repository '{repo_name}': {e}")
+                finally:
+                    shutil.rmtree(temp_dir)
+
+    if problems:
+        message = '\n- '.join(
+            ['There are problems with new package submissions:'] +
+            sorted(problems))
+    else:
+        message = 'New package submissions follow guidelines'
+
+    criteria.append(Criterion(recommendation, message))
+
+
+def _check_version_bumps(criteria, annotations, index):
     bumps = set()
 
     for distro in (index or {}).values():
@@ -180,30 +312,33 @@ def _check_version_bumps(criteria, annotations, index):
 def _find_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
     cycles = []
     visited = set()
-    path = []
-    path_set = set()
+    stack = []
+    stack_set = set()
 
     def visit(node):
-        if node in path_set:
-            # Found a cycle! Extract it from the path.
-            idx = path.index(node)
-            cycles.append(path[idx:] + [node])
+        if node in stack_set:
+            # Cycle detected
+            idx = stack.index(node)
+            cycle = stack[idx:] + [node]
+            cycles.append(cycle)
             return
+
         if node in visited:
             return
 
         visited.add(node)
-        path.append(node)
-        path_set.add(node)
+        stack.append(node)
+        stack_set.add(node)
 
         for neighbor in graph.get(node, []):
             visit(neighbor)
 
-        path_set.remove(node)
-        path.pop()
+        stack_set.remove(node)
+        stack.pop()
 
-    for node in graph:
-        visit(node)
+    for node in list(graph.keys()):
+        if node not in visited:
+            visit(node)
     return cycles
 
 
@@ -315,14 +450,16 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
 
         logger.info('Performing analysis on ROS distribution changes...')
 
+        _check_dependency_cycles(criteria, annotations, index)
+
         # Prune the index down to only changed elements
         _prune_index(index)
         if not index:
             # Bypass check if no distros were changed
-            return None, None
+            return criteria or None, annotations or None
 
-        _check_dependency_cycles(criteria, annotations, index)
         _check_duplicates(criteria, annotations, index, entities)
+        _check_new_packages(criteria, annotations, index)
         _check_version_bumps(criteria, annotations, index)
 
         return criteria, annotations
