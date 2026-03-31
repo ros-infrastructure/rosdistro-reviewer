@@ -38,10 +38,11 @@ EOL_PLATFORMS = {
         'buster',
     },
     'fedora': {
-        str(n) for n in range(21, 39)
+        '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
+        '31', '32', '33', '34', '35', '36', '37', '38'
     },
     'rhel': {
-        str(n) for n in range(3, 8)
+        '3', '4', '5', '6', '7'
     },
     'ubuntu': {
         'trusty',
@@ -350,7 +351,17 @@ def _check_suitability(criteria, annotations, changed_rosdeps, key_counts):
     else:
         message = 'New keys appear suitable for rosdep'
 
+    _validate_markdown(message)
     criteria.append(Criterion(recommendation, message))
+
+
+def _validate_markdown(content: str) -> None:
+    """Ensure generated markdown is structurally sound."""
+    # Check for balanced backticks
+    if len(re.findall(r'(?<!`)`(?!`)', content)) % 2 != 0:
+        raise ValueError('Unbalanced single backticks in markdown')
+    if len(re.findall(r'```', content)) % 2 != 0:
+        raise ValueError('Unbalanced triple backticks in markdown')
 
 
 def _check_native_existence(criteria, annotations, changed_rosdeps):
@@ -436,6 +447,7 @@ def _check_native_existence(criteria, annotations, changed_rosdeps):
     else:
         message = 'No native Ubuntu/Debian packages found for new pip keys'
 
+    _validate_markdown(message)
     criteria.append(Criterion(recommendation, message))
 
 
