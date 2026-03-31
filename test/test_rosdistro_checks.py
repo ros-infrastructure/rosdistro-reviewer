@@ -2,8 +2,11 @@
 # Licensed under the Apache License, Version 2.0
 
 import itertools
+import os
 from pathlib import Path
 from typing import Iterable
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from git import Repo
 import pytest
@@ -41,7 +44,7 @@ def rosdistro_index_repo(empty_repo) -> Iterable[Repo]:
         empty_repo.index.add(str(file_path))
 
     index_path = repo_dir / 'index-v4.yaml'
-    with index_path.open('w') as f:
+    with index_path.open('r' if index_path.exists() else 'w') as f:
         yaml.dump(_generate_index(EXISTING_DISTROS.keys()), f)
 
     empty_repo.index.add(str(index_path))
@@ -132,6 +135,69 @@ CONTROL_DISTROS = {
         },
     },
 }
+
+
+@pytest.fixture(autouse=True)
+def mock_subprocess():
+    with patch(
+        'rosdistro_reviewer.element_analyzer.rosdistro.subprocess.run'
+    ) as mock_run:
+        def default_side_effect(cmd, **kwargs):
+            if cmd[0] == 'git' and cmd[1] == 'clone':
+                dest = cmd[7]
+                os.makedirs(dest, exist_ok=True)
+                with open(os.path.join(dest, 'LICENSE'), 'w') as f:
+                    f.write('dummy license')
+                with open(os.path.join(dest, 'package.xml'), 'w') as f:
+                    f.write('<package format="2"><name>valid_package</name>'
+                            '<version>1.0.0</version>'
+                            '<description>a</description>'
+                            '<maintainer email="a@a.a">a</maintainer>'
+                            '<license>Apache-2.0</license></package>')
+            return MagicMock()
+        mock_run.side_effect = default_side_effect
+        yield mock_run
+
+
+def test_new_package_checks(rosdistro_index_repo, mock_subprocess):
+    repo_dir = Path(rosdistro_index_repo.working_tree_dir)
+    extension = RosdistroAnalyzer()
+
+    # Case 1: Missing LICENSE and REP-144 violation
+    violation_rules = {
+        'rolling': {
+            'violation_repo': {
+                'source': {
+                    'type': 'git',
+                    'url': 'https://example.com/violation.git',
+                    'version': 'main',
+                },
+            },
+        },
+    }
+    distros = _merge_distributions(EXISTING_DISTROS, violation_rules)
+    for distro_name, repos in distros.items():
+        file_path = repo_dir / distro_name / 'distribution.yaml'
+        with file_path.open('w') as f:
+            yaml.dump({'repositories': repos}, f)
+
+    def side_effect(cmd, **kwargs):
+        dest = cmd[7]
+        os.makedirs(dest, exist_ok=True)
+        # Invalid name and NO license file
+        with open(os.path.join(dest, 'package.xml'), 'w') as f:
+            f.write('<package format="2"><name>Invalid_Name</name>'
+                    '<version>1.0.0</version>'
+                    '<description>a</description>'
+                    '<maintainer email="a@a.a">a</maintainer>'
+                    '<license>Apache-2.0</license></package>')
+        return MagicMock()
+    mock_subprocess.side_effect = side_effect
+
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria and annotations
+    assert any("missing a LICENSE file" in c.rationale for c in criteria)
+    assert any("does not follow REP-144" in c.rationale for c in criteria)
 
 
 # This is a list of violations to check for.
