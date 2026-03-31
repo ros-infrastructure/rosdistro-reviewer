@@ -4,6 +4,8 @@
 import itertools
 from pathlib import Path
 from typing import Iterable
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from git import Repo
 import pytest
@@ -231,3 +233,41 @@ def test_violation(rosdistro_index_repo, violation_distros):
     criteria, annotations = extension.analyze(repo_dir)
     assert criteria and annotations
     assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
+
+def test_dependency_cycle(rosdistro_index_repo):
+    repo_dir = Path(rosdistro_index_repo.working_tree_dir)
+    extension = RosdistroAnalyzer()
+
+    # Add a package that forms a cycle in the modified distribution
+    cycle_rules = {
+        'rolling': {
+            'package_a': {
+                'release': {
+                    'packages': ['package_a'],
+                    'version': '1.0.0-0',
+                },
+            },
+        },
+    }
+    distros = _merge_distributions(EXISTING_DISTROS, cycle_rules)
+    for distro_name, repos in distros.items():
+        file_path = repo_dir / distro_name / 'distribution.yaml'
+        with file_path.open('w') as f:
+            yaml.dump({'repositories': repos}, f)
+
+    # Mock rosdistro cache to have package_a -> package_b and package_b -> package_a
+    with patch('rosdistro_reviewer.element_analyzer.rosdistro.get_index'), \
+         patch('rosdistro_reviewer.element_analyzer.rosdistro.get_distribution_cache') as mock_cache:
+        
+        cache_instance = MagicMock()
+        cache_instance.release_package_xmls = {
+            'package_a': '<?xml version="1.0"?><package format="2"><name>package_a</name><version>1.0.0</version><description>a</description><maintainer email="a@example.com">a</maintainer><license>Apache-2.0</license><depend>package_b</depend></package>',
+            'package_b': '<?xml version="1.0"?><package format="2"><name>package_b</name><version>1.0.0</version><description>b</description><maintainer email="b@example.com">b</maintainer><license>Apache-2.0</license><depend>package_a</depend></package>',
+        }
+        mock_cache.return_value = cache_instance
+
+        criteria, annotations = extension.analyze(repo_dir)
+        assert criteria and not annotations
+        assert any('Dependency cycle detected: package_a -> package_b -> package_a' in c.rationale
+                   for c in criteria)
+        assert any(Recommendation.DISAPPROVE == c.recommendation for c in criteria)
