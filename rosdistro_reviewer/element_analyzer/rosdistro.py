@@ -42,7 +42,6 @@ def _check_duplicates(criteria, annotations, index, entities):
         return
 
     recommendation = Recommendation.APPROVE
-    problems = set()
 
     # Names should be unique
     for distro_name, distro_file, repo_name, repo in (
@@ -266,7 +265,6 @@ def _check_new_packages(criteria, annotations, index):
     else:
         message = 'New package submissions follow guidelines'
 
-    _validate_markdown(message)
     criteria.append(Criterion(recommendation, message))
 
 
@@ -309,7 +307,6 @@ def _check_version_bumps(criteria, annotations, index):
     if bumps:
         message = 'The following repositories have simple version bumps: ' + \
                   ', '.join(sorted(bumps))
-        _validate_markdown(message)
         criteria.append(Criterion(Recommendation.APPROVE, message))
 
 
