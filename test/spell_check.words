@@ -4,11 +4,13 @@ archlinux
 autouse
 bubblify
 buildfarm
+buildtool
 colcon
 committish
 connectionpool
 corge
 debian
+deps
 deserialized
 diffs
 distro
@@ -36,6 +38,7 @@ linting
 login
 mantic
 metafunc
+mkdtemp
 mktemp
 mypy
 namedtuple
@@ -45,14 +48,17 @@ openrobotics
 opensource
 patchset
 pathlib
+pkgs
 plugin
 prepend
+pxml
 pycqa
 pytest
 rangeify
 representer
 returncode
 rhel
+rmtree
 rosdep
 rosdeps
 rosdistro
@@ -62,6 +68,7 @@ rtype
 runpy
 scspell
 setuptools
+tempfile
 thomas
 traceback
 ubuntu
@@ -72,6 +79,7 @@ utopic
 waldo
 whisky
 xenial
+xmls
 yakkety
 yaml
 yamllint

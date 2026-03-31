@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from catkin_pkg.package import InvalidPackage
 from catkin_pkg.package import parse_package_string
 from colcon_core.logging import colcon_logger
 from colcon_core.plugin_system import satisfies_version
@@ -41,6 +42,7 @@ def _check_duplicates(criteria, annotations, index, entities):
         return
 
     recommendation = Recommendation.APPROVE
+    problems = set()
 
     # Names should be unique
     for distro_name, distro_file, repo_name, repo in (
@@ -264,6 +266,7 @@ def _check_new_packages(criteria, annotations, index):
     else:
         message = 'New package submissions follow guidelines'
 
+    _validate_markdown(message)
     criteria.append(Criterion(recommendation, message))
 
 
@@ -306,14 +309,24 @@ def _check_version_bumps(criteria, annotations, index):
     if bumps:
         message = 'The following repositories have simple version bumps: ' + \
                   ', '.join(sorted(bumps))
+        _validate_markdown(message)
         criteria.append(Criterion(Recommendation.APPROVE, message))
 
 
+def _validate_markdown(content: str) -> None:
+    """Ensure generated markdown is structurally sound."""
+    # Check for balanced backticks
+    if len(re.findall(r'(?<!`)`(?!`)', content)) % 2 != 0:
+        raise ValueError('Unbalanced single backticks in markdown')
+    if len(re.findall(r'```', content)) % 2 != 0:
+        raise ValueError('Unbalanced triple backticks in markdown')
+
+
 def _find_cycles(graph: Dict[str, Set[str]]) -> List[List[str]]:
-    cycles = []
-    visited = set()
-    stack = []
-    stack_set = set()
+    cycles: List[List[str]] = []
+    visited: Set[str] = set()
+    stack: List[str] = []
+    stack_set: Set[str] = set()
 
     def visit(node):
         if node in stack_set:
@@ -354,7 +367,7 @@ def _check_dependency_cycles(criteria, annotations, index):
         try:
             ros_index = get_index(get_index_url())
             cache = get_distribution_cache(ros_index, distro_name)
-        except Exception as e:
+        except (IOError, OSError, RuntimeError) as e:
             logger.warning(f'Could not load cache for {distro_name}: {e}')
             continue
 
@@ -372,7 +385,7 @@ def _check_dependency_cycles(criteria, annotations, index):
                 deps.update(d.name for d in pkg.exec_depends)
                 deps.update(d.name for d in pkg.doc_depends)
                 graph[pkg_name] = deps
-            except Exception:
+            except (InvalidPackage, ValueError, KeyError):
                 continue
 
         # Identify which packages were changed/added in this PR
@@ -402,11 +415,13 @@ def _check_dependency_cycles(criteria, annotations, index):
                 problems.append(f'Dependency cycle detected: {cycle_str}')
 
             message = '\n- '.join(['There are dependency cycles:'] + problems)
+            _validate_markdown(message)
             criteria.append(Criterion(recommendation, message))
-        else:
+        elif changed_pkgs:
+            message = f'No dependency cycles detected in {distro_name}'
+            _validate_markdown(message)
             criteria.append(Criterion(
-                Recommendation.APPROVE,
-                f'No dependency cycles detected in {distro_name}'))
+                Recommendation.APPROVE, message))
 
 
 class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
