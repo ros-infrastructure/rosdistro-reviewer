@@ -1,7 +1,12 @@
 # Copyright 2026 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import os
 from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
 from typing import Any, Dict, List, Optional, Tuple
 
 from colcon_core.logging import colcon_logger
@@ -16,6 +21,20 @@ from rosdistro_reviewer.yaml_changes import prune_changed_yaml
 import yaml
 
 logger = colcon_logger.getChild(__name__)
+
+
+class ManifestCheck:
+    """Base class for checks performed on ROS package manifests."""
+
+    def check(self, pxml_path: str, pxml_content: str) -> List[str]:
+        """
+        Perform a check on a package manifest.
+
+        :param pxml_path: Path to the package.xml file
+        :param pxml_content: Content of the package.xml file
+        :return: A list of error messages, or an empty list if no issues found
+        """
+        raise NotImplementedError()
 
 
 def _check_duplicates(criteria, annotations, index, entities):
@@ -127,6 +146,114 @@ def _prune_index(changed_distros):
                 del distro[distro_file]
         if not distro:
             del changed_distros[distro_name]
+
+
+def _is_any_modified(data: Any) -> bool:
+    if getattr(data, '__lines__', None) is not None:
+        return True
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if _is_any_modified(k) or _is_any_modified(v):
+                return True
+    elif isinstance(data, list):
+        for item in data:
+            if _is_any_modified(item):
+                return True
+    return False
+
+
+def _validate_markdown(content: str) -> None:
+    """Ensure generated markdown is structurally sound."""
+    # Check for balanced backticks
+    if len(re.findall(r'(?<!`)`(?!`)', content)) % 2 != 0:
+        raise ValueError('Unbalanced single backticks in markdown')
+    if len(re.findall(r'```', content)) % 2 != 0:
+        raise ValueError('Unbalanced triple backticks in markdown')
+
+
+def _check_source_repositories(
+    criteria: List[Criterion],
+    annotations: List[Annotation],
+    index: Dict[str, Any],
+    manifest_checks: List[ManifestCheck]
+) -> None:
+    """
+    Check source repositories for common issues.
+
+    This function clones repositories that were modified or added,
+    and runs a suite of checks on their contents.
+    """
+    for distro_name, distro in (index or {}).items():
+        for distro_file, repos in (distro or {}).items():
+            for repo_name, repo in (repos or {}).items():
+                source = repo.get('source')
+                if not source or source.get('type') != 'git':
+                    continue
+
+                if not _is_any_modified(repo_name) and \
+                   not _is_any_modified(repo):
+                    continue
+
+                url = source.get('url')
+                version = source.get('version', 'master')
+                if not url:
+                    continue
+
+                logger.info(f'Checking source repository: {url}')
+                temp_dir = tempfile.mkdtemp()
+                try:
+                    subprocess.run(
+                        ['git', 'clone', '--depth', '1', '-b',
+                         version, url, temp_dir],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+
+                    # Run manifest-based checks
+                    package_xmls_found = False
+                    for root, _, files in os.walk(temp_dir):
+                        if 'package.xml' in files:
+                            package_xmls_found = True
+                            pxml_path = os.path.join(root, 'package.xml')
+                            try:
+                                with open(pxml_path, 'r') as f:
+                                    content = f.read()
+                                    for check in manifest_checks:
+                                        errors = check.check(
+                                            pxml_path, content)
+                                        for err in (errors or []):
+                                            annotations.append(
+                                                Annotation(
+                                                    distro_file,
+                                                    repo_name.__lines__,
+                                                    err))
+                                            criteria.append(
+                                                Criterion(
+                                                    Recommendation.NEUTRAL,
+                                                    f"{err} in '{repo_name}'"))
+                            except Exception as e:
+                                logger.error(
+                                    f'Error checking {pxml_path}: {e}')
+
+                    if not package_xmls_found:
+                        criteria.append(
+                            Criterion(
+                                Recommendation.NEUTRAL,
+                                f"No ROS packages found in '{repo_name}'"))
+                        annotations.append(
+                            Annotation(
+                                distro_file, repo_name.__lines__,
+                                'No package.xml found in source repo'))
+
+                except subprocess.SubprocessError as e:
+                    logger.error(f'Error cloning {url}: {e}')
+                    criteria.append(
+                        Criterion(
+                            Recommendation.NEUTRAL,
+                            f"Could not clone repository '{repo_name}': {e}"))
+                finally:
+                    shutil.rmtree(temp_dir)
 
 
 class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):

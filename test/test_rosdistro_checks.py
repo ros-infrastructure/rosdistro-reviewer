@@ -2,8 +2,11 @@
 # Licensed under the Apache License, Version 2.0
 
 import itertools
+import os
 from pathlib import Path
 from typing import Iterable
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from git import Repo
 import pytest
@@ -41,7 +44,7 @@ def rosdistro_index_repo(empty_repo) -> Iterable[Repo]:
         empty_repo.index.add(str(file_path))
 
     index_path = repo_dir / 'index-v4.yaml'
-    with index_path.open('w') as f:
+    with index_path.open('r' if index_path.exists() else 'w') as f:
         yaml.dump(_generate_index(EXISTING_DISTROS.keys()), f)
 
     empty_repo.index.add(str(index_path))
@@ -132,6 +135,72 @@ CONTROL_DISTROS = {
         },
     },
 }
+
+
+@pytest.fixture(autouse=True)
+def mock_subprocess():
+    with patch(
+        'rosdistro_reviewer.element_analyzer.rosdistro.subprocess.run'
+    ) as mock_run:
+        def default_side_effect(cmd, **kwargs):
+            if cmd[0] == 'git' and cmd[1] == 'clone':
+                dest = cmd[7]
+                os.makedirs(dest, exist_ok=True)
+                with open(os.path.join(dest, 'package.xml'), 'w') as f:
+                    f.write('<package><name>valid_package</name></package>')
+            return MagicMock()
+        mock_run.side_effect = default_side_effect
+        yield mock_run
+
+
+def test_manifest_base_orchestration(rosdistro_index_repo, mock_subprocess):
+    from rosdistro_reviewer.element_analyzer.rosdistro import \
+        _check_source_repositories, ManifestCheck
+    from rosdistro_reviewer.review import Recommendation
+
+    class SimpleCheck(ManifestCheck):
+        def check(self, pxml_path, pxml_content):
+            if 'fail' in pxml_content:
+                return ['Found failure string']
+            return []
+
+    repo_dir = Path(rosdistro_index_repo.working_tree_dir)
+    
+    # Simulate a new repo
+    class AnnotatedStr(str): pass
+    repo_name = AnnotatedStr('new_repo')
+    repo_name.__lines__ = range(1, 2)
+    
+    index = {
+        'rolling': {
+            'rolling/distribution.yaml': {
+                repo_name: {
+                    'source': {
+                        'type': 'git',
+                        'url': 'https://example.com/new_repo.git',
+                        'version': 'main'
+                    }
+                }
+            }
+        }
+    }
+
+    criteria = []
+    annotations = []
+
+    # Mock git clone to provide a 'fail' manifest
+    def side_effect(cmd, **kwargs):
+        dest = cmd[7]
+        os.makedirs(dest, exist_ok=True)
+        with open(os.path.join(dest, 'package.xml'), 'w') as f:
+            f.write('<package>fail</package>')
+        return MagicMock()
+    mock_subprocess.side_effect = side_effect
+
+    _check_source_repositories(criteria, annotations, index, [SimpleCheck()])
+    
+    assert any('Found failure string' in c.rationale for c in criteria)
+    assert any(a.message == 'Found failure string' for a in annotations)
 
 
 # This is a list of violations to check for.
