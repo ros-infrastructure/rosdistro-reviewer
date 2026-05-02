@@ -22,6 +22,7 @@ github
 hexsha
 https
 india
+isdigit
 iterdir
 itertools
 jessie
@@ -62,6 +63,7 @@ rtype
 runpy
 scspell
 setuptools
+takewhile
 thomas
 traceback
 ubuntu
