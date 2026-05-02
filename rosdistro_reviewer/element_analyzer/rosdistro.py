@@ -139,20 +139,17 @@ def _check_bloom_version(criteria, annotations, index):
             continue
 
         min_version = '.'.join(map(str, min_ver_tuple))
-        for distro_file, repo in (
-            (distro_file, repo)
-            for distro_file, repos in (distro or {}).items()
-            for repo in (repos or {}).values()
-        ):
-            release = repo.get('release', {})
-            version_lines = getattr(release.get('version'), '__lines__', None)
-            if version_lines:
-                annotations.append(Annotation(
-                    distro_file, None,
-                    f'Please run Bloom {min_version} or newer to release '
-                    f'for {distro_name}. The PR was generated '
-                    f'with {bloom_version}.'))
-                break
+        for distro_file, repos in (distro or {}).items():
+            for repo_name, repo in (repos or {}).items():
+                release = repo.get('release', {})
+                version_lines = getattr(
+                    release.get('version'), '__lines__', None)
+                if version_lines:
+                    annotations.append(Annotation(
+                        distro_file, version_lines,
+                        f'Please run Bloom {min_version} or newer to '
+                        f'release for {distro_name}. The PR was '
+                        f'generated with {bloom_version}.'))
 
     if recommendation != Recommendation.APPROVE:
         message = f'Outdated Bloom version used - update to {max_min_version}'

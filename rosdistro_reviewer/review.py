@@ -53,9 +53,6 @@ def _format_code_block(
     width: int,
     root: Optional[Path] = None,
 ) -> str:
-    if lines is None:
-        return f'> In {file}'
-
     if root is None or not (root / file).is_file():
         if lines.start + 1 == lines.stop:
             return f'> In {file}, line {lines.start}'
