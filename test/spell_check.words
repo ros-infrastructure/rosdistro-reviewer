@@ -66,6 +66,7 @@ setuptools
 takewhile
 thomas
 traceback
+typeddict
 ubuntu
 unidiff
 unittest

@@ -96,20 +96,31 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
         def _annotation_to_comment(
             annotation: Annotation,
         ) -> ReviewComment:
-            if annotation.lines.stop == annotation.lines.start + 1:
-                return ReviewComment(
-                    path=annotation.file,
-                    body=annotation.message,
-                    line=annotation.lines.start,
-                    side='RIGHT')
+            line_args: Dict[str, Any] = {
+                'subject_type': 'line',
+            }
+
+            if annotation.lines is None:
+                line_args.update({
+                    'subject_type': 'file',
+                })
+            elif annotation.lines.stop == annotation.lines.start + 1:
+                line_args.update({
+                    'line': annotation.lines.start,
+                    'side': 'RIGHT',
+                })
             else:
-                return ReviewComment(
-                    path=annotation.file,
-                    body=annotation.message,
-                    line=annotation.lines.stop - 1,
-                    side='RIGHT',
-                    start_line=annotation.lines.start,
-                    start_side='RIGHT')
+                line_args.update({
+                    'line': annotation.lines.stop - 1,
+                    'side': 'RIGHT',
+                    'start_line': annotation.lines.start,
+                    'start_side': 'RIGHT',
+                })
+
+            return ReviewComment(
+                path=annotation.file,
+                body=annotation.message,
+                **line_args)  # type: ignore[typeddict-item]
 
         comments = list(map(_annotation_to_comment, review.annotations))
 
