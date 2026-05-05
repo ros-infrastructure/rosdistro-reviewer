@@ -8,7 +8,8 @@ import pytest
 
 
 @pytest.fixture
-def empty_repo(tmp_path) -> Iterable[Repo]:
+def empty_repo(tmp_path_factory) -> Iterable[Repo]:
+    tmp_path = tmp_path_factory.mktemp('repo')
     with Repo.init(tmp_path) as repo:
         repo.index.commit('Initial commit')
 

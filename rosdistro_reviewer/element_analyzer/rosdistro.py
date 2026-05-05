@@ -1,7 +1,11 @@
 # Copyright 2026 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import itertools
+import json
+import os
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from colcon_core.logging import colcon_logger
@@ -16,6 +20,21 @@ from rosdistro_reviewer.yaml_changes import prune_changed_yaml
 import yaml
 
 logger = colcon_logger.getChild(__name__)
+
+MINIMUM_BLOOM_VERSIONS = {
+    'humble': (0, 12, 0),
+    'jazzy': (0, 12, 0),
+    'kilted': (0, 12, 0),
+    'lyrical': (0, 14, 3),
+    'rolling': (0, 14, 3),
+}
+
+
+def _parse_version(version_str: str) -> Tuple[int, ...]:
+    return tuple(
+        int(x) for x in itertools.takewhile(
+            str.isdigit, version_str.split('.'))
+    )
 
 
 def _check_duplicates(criteria, annotations, index, entities):
@@ -61,6 +80,81 @@ def _check_duplicates(criteria, annotations, index, entities):
         message = 'There are problems with naming collision'
     else:
         message = 'New packages and repositories have unique names'
+
+    criteria.append(Criterion(recommendation, message))
+
+
+def _check_bloom_version(criteria, annotations, index):
+    # Only run if release version was updated
+    if not any(
+        getattr(repo.get('release', {}).get('version'), '__lines__', None)
+        for distro in (index or {}).values()
+        for repos in (distro or {}).values()
+        for repo in (repos or {}).values()
+    ):
+        return
+
+    event_path = os.environ.get('GITHUB_EVENT_PATH')
+    if not event_path or not Path(event_path).is_file():
+        return
+
+    try:
+        with open(event_path, 'r') as f:
+            event_data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        criteria.append(Criterion(
+            Recommendation.NEUTRAL,
+            'Failed to parse GitHub event file'))
+        return
+
+    pull_request = event_data.get('pull_request', {})
+    title = pull_request.get('title')
+    if not (title or '').endswith('[bloom]'):
+        return
+
+    body = pull_request.get('body')
+    match = re.search(r'bloom version:\s*`?([^\s`]+)`?', body or '')
+    if not match:
+        criteria.append(Criterion(
+            Recommendation.NEUTRAL,
+            'Could not verify Bloom version in PR body'))
+        return
+
+    bloom_version = match.group(1)
+    bloom_ver_tuple = _parse_version(bloom_version)
+
+    max_min_ver_tuple = max(MINIMUM_BLOOM_VERSIONS.values())
+    max_min_version = '.'.join(map(str, max_min_ver_tuple))
+
+    recommendation = Recommendation.APPROVE
+    if bloom_ver_tuple < max_min_ver_tuple:
+        recommendation = Recommendation.NEUTRAL
+
+    for distro_name, distro in (index or {}).items():
+        min_ver_tuple = MINIMUM_BLOOM_VERSIONS.get(distro_name, ())
+
+        if bloom_ver_tuple < min_ver_tuple:
+            recommendation = Recommendation.DISAPPROVE
+        else:
+            continue
+
+        min_version = '.'.join(map(str, min_ver_tuple))
+        for distro_file, repos in (distro or {}).items():
+            for repo_name, repo in (repos or {}).items():
+                release = repo.get('release', {})
+                version_lines = getattr(
+                    release.get('version'), '__lines__', None)
+                if version_lines:
+                    annotations.append(Annotation(
+                        distro_file, version_lines,
+                        f'Please run Bloom {min_version} or newer to '
+                        f'release for {distro_name}. The PR was '
+                        f'generated with {bloom_version}.'))
+
+    if recommendation != Recommendation.APPROVE:
+        message = f'Outdated Bloom version used - update to {max_min_version}'
+    else:
+        message = 'An up-to-date Bloom version was used'
 
     criteria.append(Criterion(recommendation, message))
 
@@ -177,5 +271,6 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
         logger.info('Performing analysis on ROS distribution changes...')
 
         _check_duplicates(criteria, annotations, index, entities)
+        _check_bloom_version(criteria, annotations, index)
 
         return criteria, annotations
