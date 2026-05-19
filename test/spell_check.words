@@ -2,6 +2,8 @@ addfinalizer
 apache
 archlinux
 autouse
+backticks
+binpkg
 bubblify
 buildfarm
 colcon
@@ -62,6 +64,7 @@ rstrip
 rtype
 runpy
 scspell
+searchon
 setuptools
 takewhile
 thomas
@@ -70,6 +73,7 @@ ubuntu
 unidiff
 unittest
 urllib
+urls
 utopic
 waldo
 whisky

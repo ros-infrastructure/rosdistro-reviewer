@@ -4,11 +4,13 @@
 from pathlib import Path
 from pathlib import PurePosixPath
 import re
+import subprocess
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
+from urllib.parse import quote
 
 from colcon_core.logging import colcon_logger
 from colcon_core.plugin_system import satisfies_version
@@ -36,10 +38,11 @@ EOL_PLATFORMS = {
         'buster',
     },
     'fedora': {
-        str(n) for n in range(21, 39)
+        '21', '22', '23', '24', '25', '26', '27', '28', '29', '30',
+        '31', '32', '33', '34', '35', '36', '37', '38'
     },
     'rhel': {
-        str(n) for n in range(3, 8)
+        '3', '4', '5', '6', '7'
     },
     'ubuntu': {
         'trusty',
@@ -348,6 +351,103 @@ def _check_suitability(criteria, annotations, changed_rosdeps, key_counts):
     else:
         message = 'New keys appear suitable for rosdep'
 
+    _validate_markdown(message)
+    criteria.append(Criterion(recommendation, message))
+
+
+def _validate_markdown(content: str) -> None:
+    """Ensure generated markdown is structurally sound."""
+    # Check for balanced backticks
+    if len(re.findall(r'(?<!`)`(?!`)', content)) % 2 != 0:
+        raise ValueError('Unbalanced single backticks in markdown')
+    if len(re.findall(r'```', content)) % 2 != 0:
+        raise ValueError('Unbalanced triple backticks in markdown')
+
+
+def _check_native_existence(criteria, annotations, changed_rosdeps):
+    # Bypass check if no new keys were added
+    if not any(
+        getattr(key, '__lines__', None)
+        for changes in changed_rosdeps.values()
+        for key in changes.keys()
+    ):
+        return
+
+    recommendation = Recommendation.APPROVE
+    problems = set()
+
+    # Native packages are strongly preferred
+    for file, changes in changed_rosdeps.items():
+        for key, rules in changes.items():
+            if not getattr(key, '__lines__', None):
+                continue
+
+            is_pip = isinstance(rules, dict) and any(
+                isinstance(rule, dict) and 'pip' in rule.keys()
+                for rule in rules.values()
+            )
+            if not is_pip:
+                continue
+
+            package_name = key.replace('-pip', '')
+            search_names = [package_name]
+            if package_name.startswith('python3-'):
+                search_names.append(package_name[8:])
+            elif not package_name.startswith('python-'):
+                search_names.append('python3-' + package_name)
+
+            found_any = False
+            found_urls = []
+            for name in set(search_names):
+                for platform in ['ubuntu', 'debian']:
+                    url = f'https://packages.{platform}.com/search' \
+                          f'?keywords={quote(name)}&searchon=names' \
+                          f'&suite=all&section=all'
+                    try:
+                        result = subprocess.run(
+                            ['curl', '-s', '-L', url],
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                            check=True,
+                        )
+                        if (
+                            f'<h3>Package {name}</h3>' in result.stdout
+                            or 'Exact hits' in result.stdout
+                            or f'class="binpkg">{name}</a>' in result.stdout
+                        ):
+                            found_any = True
+                            found_urls.append(f'{platform}: {name}')
+                    except subprocess.SubprocessError as e:
+                        logger.error(f'Error checking {platform}: {e}')
+
+            if found_any:
+                recommendation = min(recommendation, Recommendation.NEUTRAL)
+                problems.add(
+                    f'Found native package(s) for `{key}`, '
+                    f'prefer native over pip: {", ".join(found_urls)}'
+                )
+                annotations.append(
+                    Annotation(
+                        file,
+                        key.__lines__,
+                        f'Found native package(s) for `{key}`, '
+                        'prefer native over pip',
+                    )
+                )
+
+    if problems:
+        message = '\n- '.join(
+            [
+                'There are problems with native existence for new '
+                'rosdep keys:',
+            ]
+            + sorted(problems)
+        )
+    else:
+        message = 'No native Ubuntu/Debian packages found for new pip keys'
+
+    _validate_markdown(message)
     criteria.append(Criterion(recommendation, message))
 
 
@@ -432,5 +532,6 @@ class RosdepAnalyzer(ElementAnalyzerExtensionPoint):
         _check_platforms(criteria, annotations, changed_rosdeps)
         _check_installers(criteria, annotations, changed_rosdeps)
         _check_suitability(criteria, annotations, changed_rosdeps, key_counts)
+        _check_native_existence(criteria, annotations, changed_rosdeps)
 
         return criteria, annotations
