@@ -119,6 +119,15 @@ EXISTING_DISTROS = {
             },
         },
     },
+    'jazzy': {
+        'existing_jazzy': {
+            'source': {
+                'type': 'git',
+                'url': 'https://example.com/existing_jazzy.git',
+                'version': 'main',
+            },
+        },
+    },
 }
 
 
@@ -131,6 +140,14 @@ CONTROL_DISTROS = {
                 'type': 'git',
                 'url': 'https://example.com/control_bravo.git',
                 'version': 'main',
+            },
+        },
+    },
+    'jazzy': {
+        'control_delta': {
+            'release': {
+                'url': 'https://github.com/other/control_delta-release.git',
+                'version': '1.0.0-1',
             },
         },
     },
@@ -162,6 +179,17 @@ VIOLATIONS = {
             'echo': {
                 'release': {
                     'packages': ['duplicate_name'],
+                },
+            },
+        },
+    },
+    'E': {
+        # This rolling repo has a release URL outside of ros2-gbp
+        'rolling': {
+            'wrong_org': {
+                'release': {
+                    'url': 'https://github.com/other/wrong_org-release.git',
+                    'version': '1.0.0-1',
                 },
             },
         },

@@ -84,6 +84,56 @@ def _check_duplicates(criteria, annotations, index, entities):
     criteria.append(Criterion(recommendation, message))
 
 
+def _check_gbp_org(criteria, annotations, index):
+    # This check only applies to rolling
+    rolling_index = index.get('rolling', {})
+    if not rolling_index:
+        return
+
+    # Bypass check if no release URLs were added/modified in rolling
+    if not any(
+        getattr(repo.get('release', {}).get('url'), '__lines__', None)
+        for repos in rolling_index.values()
+        for repo in repos.values()
+    ):
+        return
+
+    recommendation = Recommendation.APPROVE
+    problems = set()
+
+    for distro_file, repo_name, repo in (
+        (distro_file, repo_name, repo)
+        for distro_file, repos in rolling_index.items()
+        for repo_name, repo in repos.items()
+    ):
+        release = repo.get('release')
+        if not release:
+            continue
+
+        url = release.get('url')
+        if not getattr(url, '__lines__', None):
+            continue
+
+        if not (url or '').startswith('https://github.com/ros2-gbp/'):
+            recommendation = Recommendation.DISAPPROVE
+            problems.add(
+                'Release repositories for rolling must be hosted in the '
+                'ros2-gbp organization')
+            annotations.append(Annotation(
+                distro_file, url.__lines__,
+                'This URL should start with '
+                'https://github.com/ros2-gbp/'))
+
+    if problems:
+        message = '\n- '.join([
+            'There are problems with release repository hosting:',
+        ] + sorted(problems))
+    else:
+        message = 'New release repositories are hosted in the correct org'
+
+    criteria.append(Criterion(recommendation, message))
+
+
 def _check_bloom_version(criteria, annotations, index):
     # Only run if release version was updated
     if not any(
@@ -271,6 +321,7 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
         logger.info('Performing analysis on ROS distribution changes...')
 
         _check_duplicates(criteria, annotations, index, entities)
+        _check_gbp_org(criteria, annotations, index)
         _check_bloom_version(criteria, annotations, index)
 
         return criteria, annotations
