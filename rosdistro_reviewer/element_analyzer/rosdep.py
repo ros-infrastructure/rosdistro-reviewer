@@ -351,6 +351,29 @@ def _check_suitability(criteria, annotations, changed_rosdeps, key_counts):
     criteria.append(Criterion(recommendation, message))
 
 
+def _check_pip_disclaimer(criteria, annotations, changed_rosdeps):
+    if any(
+        isinstance(rules, dict) and
+        all(
+            isinstance(rule, dict) and set(rule.keys()) == {'pip'}
+            for rule in rules.values()
+        ) and
+        any(
+            any(
+                getattr(obj, '__lines__', None)
+                for obj in (key, os, rule, rule['pip'])
+            )
+            for os, rule in rules.items()
+        )
+        for changes in changed_rosdeps.values()
+        for key, rules in changes.items()
+    ):
+        criteria.append(Criterion(
+            Recommendation.NEUTRAL,
+            'Disclaimer: Pip-only rules cannot be used by packages on the '
+            'ROS buildfarm'))
+
+
 def _is_yaml_blob(item, depth) -> bool:
     return PurePosixPath(item.path).suffix == '.yaml'
 
@@ -432,5 +455,6 @@ class RosdepAnalyzer(ElementAnalyzerExtensionPoint):
         _check_platforms(criteria, annotations, changed_rosdeps)
         _check_installers(criteria, annotations, changed_rosdeps)
         _check_suitability(criteria, annotations, changed_rosdeps, key_counts)
+        _check_pip_disclaimer(criteria, annotations, changed_rosdeps)
 
         return criteria, annotations

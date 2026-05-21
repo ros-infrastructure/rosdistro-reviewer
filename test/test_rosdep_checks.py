@@ -152,13 +152,6 @@ CONTROL_RULES = {
             },
             'ubuntu': ['python3-control-bravo'],
         },
-        'python3-control-kilo-pip': {
-            '*': {
-                'pip': {
-                    'packages': ['python3-control-kilo'],
-                },
-            },
-        },
         'python3-control-charlie': {
             'fedora': ['python3-control-charlie'],
             'ubuntu': None,
@@ -167,10 +160,28 @@ CONTROL_RULES = {
 }
 
 
+# This is a list of circumstances which require further review.
+SENSITIVE = {
+    '*': CONTROL_RULES,
+    'A': {
+        # This is a pip-only rule, which can't be used on the buildfarm
+        'python.yaml': {
+            'python3-control-kilo-pip': {
+                '*': {
+                    'pip': {
+                        'packages': ['python3-control-kilo'],
+                    },
+                },
+            },
+        },
+    },
+}
+
+
 # This is a list of violations to check for.
 # To avoid collisions, each check should use unique package names.
 VIOLATIONS = {
-    '*': CONTROL_RULES,
+    '*': _merge_all_rules(SENSITIVE.values()),
     'A': {
         # This key should end in -pip
         'python.yaml': {
@@ -298,17 +309,26 @@ VIOLATIONS = {
 
 
 def pytest_generate_tests(metafunc):
-    if 'violation_rules' not in metafunc.fixturenames:
-        return
-    combinations = {
-        ''.join(key_set): _merge_all_rules(map(VIOLATIONS.get, key_set))
-        for key_set in _all_combinations(sorted(VIOLATIONS.keys()))
-        if key_set != ('*',)
-    }
-    metafunc.parametrize(
-        'violation_rules',
-        combinations.values(),
-        ids=combinations.keys())
+    if 'violation_rules' in metafunc.fixturenames:
+        combinations = {
+            ''.join(key_set): _merge_all_rules(map(VIOLATIONS.get, key_set))
+            for key_set in _all_combinations(sorted(VIOLATIONS.keys()))
+            if key_set != ('*',)
+        }
+        metafunc.parametrize(
+            'violation_rules',
+            combinations.values(),
+            ids=combinations.keys())
+    if 'sensitive_rules' in metafunc.fixturenames:
+        combinations = {
+            ''.join(key_set): _merge_all_rules(map(SENSITIVE.get, key_set))
+            for key_set in _all_combinations(sorted(SENSITIVE.keys()))
+            if key_set != ('*',)
+        }
+        metafunc.parametrize(
+            'sensitive_rules',
+            combinations.values(),
+            ids=combinations.keys())
 
 
 def test_control(rosdep_repo):
@@ -364,6 +384,21 @@ def test_removal_only(rosdep_repo):
         (repo_dir / 'rosdep' / file_name).write_text('')
 
     assert (None, None) == extension.analyze(repo_dir)
+
+
+def test_sensitive(rosdep_repo, sensitive_rules):
+    repo_dir = Path(rosdep_repo.working_tree_dir)
+    extension = RosdepAnalyzer()
+
+    rules = _merge_two_rules(EXISTING_RULES, sensitive_rules)
+    for file_name, data in rules.items():
+        file_path = repo_dir / 'rosdep' / file_name
+        with file_path.open('w') as f:
+            yaml.dump(data, f)
+
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria
+    assert any(Recommendation.APPROVE > c.recommendation for c in criteria)
 
 
 def test_violation(rosdep_repo, violation_rules):
