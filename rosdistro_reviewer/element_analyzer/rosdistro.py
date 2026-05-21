@@ -84,6 +84,82 @@ def _check_duplicates(criteria, annotations, index, entities):
     criteria.append(Criterion(recommendation, message))
 
 
+def _check_package_names(criteria, annotations, index):
+    # Bypass check if no packages were added/modified, and no release stanzas
+    # were added/modified which might use the repository name as a package
+    # name.
+    if not any(
+        any(getattr(package, '__lines__', None)
+            for package in repo.get('release', {}).get('packages') or ()) or
+        ((getattr(repo.get('release'), '__lines__', None) or
+          getattr(repo_name, '__lines__', None)) and
+         'release' in repo and not repo['release'].get('packages'))
+        for distro in (index or {}).values()
+        for repos in (distro or {}).values()
+        for repo_name, repo in (repos or {}).items()
+    ):
+        return
+
+    recommendation = Recommendation.APPROVE
+    problems = set()
+
+    for distro_file, repo_name, repo in (
+        (distro_file, repo_name, repo)
+        for distro in (index or {}).values()
+        for distro_file, repos in (distro or {}).items()
+        for repo_name, repo in (repos or {}).items()
+    ):
+        release = repo.get('release')
+        if not release:
+            # Repository is not released, we don't know the package names
+            continue
+
+        packages = release.get('packages')
+        if packages:
+            # Repository has an explicit list of package names
+            packages_to_check = [
+                name for name in packages
+                if getattr(name, '__lines__', None)
+            ]
+        elif getattr(release, '__lines__', None) or \
+                getattr(repo_name, '__lines__', None):
+            # Repository was just added or released and has in implicit
+            # package name
+            packages_to_check = [repo_name]
+        else:
+            # Released state of repository was not modified
+            continue
+
+        for package in packages_to_check:
+            lines = (
+                getattr(package, '__lines__', None) or
+                getattr(release, '__lines__', None)
+            )
+
+            if (
+                len(package) < 2 or
+                not re.match(r'^[a-z][a-z0-9_]*$', package) or
+                '__' in package
+            ):
+                recommendation = Recommendation.DISAPPROVE
+                problems.add(
+                    'Package names must comply with the mandatory rules of '
+                    'REP 144')
+                annotations.append(Annotation(
+                    distro_file, lines,
+                    f"The package name '{package}' does not comply with "
+                    'the mandatory rules of REP 144'))
+
+    if problems:
+        message = '\n- '.join([
+            'There are problems with the names of new packages:',
+        ] + sorted(problems))
+    else:
+        message = 'New packages are named appropriately'
+
+    criteria.append(Criterion(recommendation, message))
+
+
 def _check_gbp_org(criteria, annotations, index):
     # This check only applies to rolling
     rolling_index = index.get('rolling', {})
@@ -321,6 +397,7 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
         logger.info('Performing analysis on ROS distribution changes...')
 
         _check_duplicates(criteria, annotations, index, entities)
+        _check_package_names(criteria, annotations, index)
         _check_gbp_org(criteria, annotations, index)
         _check_bloom_version(criteria, annotations, index)
 
