@@ -37,54 +37,53 @@ def _parse_version(version_str: str) -> Tuple[int, ...]:
     )
 
 
-def _check_duplicates(criteria, annotations, index, entities):
-    # Bypass check if no repo or package names were added/modified
+def _check_repository_names(criteria, annotations, index, entities):
+    # Bypass check if no repo names were added/modified
     if not any(
-        getattr(repo_name, '__lines__', None) or any(
-            getattr(package, '__lines__', None)
-            for package in repo.get('release', {}).get('packages', ())
-        )
+        getattr(repo_name, '__lines__', None)
         for distro in (index or {}).values()
         for repos in (distro or {}).values()
-        for repo_name, repo in (repos or {}).items()
+        for repo_name in (repos or {}).keys()
     ):
         return
 
     recommendation = Recommendation.APPROVE
+    problems = set()
 
-    # Names should be unique
-    for distro_name, distro_file, repo_name, repo in (
-        (distro_name, distro_file, repo_name, repo)
+    for distro_name, distro_file, repo_name in (
+        (distro_name, distro_file, repo_name)
         for distro_name, distro in (index or {}).items()
         for distro_file, repos in (distro or {}).items()
-        for repo_name, repo in (repos or {}).items()
+        for repo_name in (repos or {}).keys()
     ):
-        entities_to_check = (
-            name for name in
-            (repo_name, *repo.get('release', {}).get('packages', []))
-            if getattr(name, '__lines__', None)
-        )
-        for entity in entities_to_check:
-            for other_repo in entities.get(distro_name, {}).get(entity, ()):
-                if other_repo == repo_name:
-                    continue
+        if not getattr(repo_name, '__lines__', None):
+            continue
 
-                recommendation = Recommendation.DISAPPROVE
-                annotations.append(Annotation(
-                    distro_file, entity.__lines__,
-                    'This name is already used by the '
-                    f"'{other_repo}' repository"))
-                break
+        for other_repo in entities.get(
+            distro_name, {}
+        ).get(repo_name, ()):
+            if other_repo == repo_name:
+                continue
 
-    if recommendation != Recommendation.APPROVE:
-        message = 'There are problems with naming collision'
+            recommendation = Recommendation.DISAPPROVE
+            problems.add(
+                'Repository names must be unique across the distribution')
+            annotations.append(Annotation(
+                distro_file, repo_name.__lines__,
+                f"This name is already used by the '{other_repo}' repository"))
+            break
+
+    if problems:
+        message = '\n- '.join([
+            'There are problems with the names of new repositories:',
+        ] + sorted(problems))
     else:
-        message = 'New packages and repositories have unique names'
+        message = 'New repositories are named appropriately'
 
     criteria.append(Criterion(recommendation, message))
 
 
-def _check_package_names(criteria, annotations, index):
+def _check_package_names(criteria, annotations, index, entities):
     # Bypass check if no packages were added/modified, and no release stanzas
     # were added/modified which might use the repository name as a package
     # name.
@@ -103,9 +102,9 @@ def _check_package_names(criteria, annotations, index):
     recommendation = Recommendation.APPROVE
     problems = set()
 
-    for distro_file, repo_name, repo in (
-        (distro_file, repo_name, repo)
-        for distro in (index or {}).values()
+    for distro_name, distro_file, repo_name, repo in (
+        (distro_name, distro_file, repo_name, repo)
+        for distro_name, distro in (index or {}).items()
         for distro_file, repos in (distro or {}).items()
         for repo_name, repo in (repos or {}).items()
     ):
@@ -149,6 +148,21 @@ def _check_package_names(criteria, annotations, index):
                     distro_file, lines,
                     f"The package name '{package}' does not comply with "
                     'the mandatory rules of REP 144'))
+
+            for other_repo in entities.get(
+                distro_name, {}
+            ).get(package, ()):
+                if other_repo == repo_name:
+                    continue
+
+                recommendation = Recommendation.DISAPPROVE
+                problems.add(
+                    'Package names must be unique across the distribution')
+                annotations.append(Annotation(
+                    distro_file, lines,
+                    f"This name is already used by the '{other_repo}'"
+                    'repository'))
+                break
 
     if problems:
         message = '\n- '.join([
@@ -396,8 +410,8 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
 
         logger.info('Performing analysis on ROS distribution changes...')
 
-        _check_duplicates(criteria, annotations, index, entities)
-        _check_package_names(criteria, annotations, index)
+        _check_repository_names(criteria, annotations, index, entities)
+        _check_package_names(criteria, annotations, index, entities)
         _check_gbp_org(criteria, annotations, index)
         _check_bloom_version(criteria, annotations, index)
 
