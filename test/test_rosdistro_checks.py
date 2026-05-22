@@ -194,6 +194,23 @@ VIOLATIONS = {
             },
         },
     },
+    'F': {
+        # This modifies release stanzas in multiple distros
+        'rolling': {
+            'control_bravo_release': {
+                'release': {
+                    'version': '1.0.0-1',
+                },
+            },
+        },
+        'jazzy': {
+            'control_delta_release': {
+                'release': {
+                    'version': '1.0.0-1',
+                },
+            },
+        },
+    },
 }
 
 

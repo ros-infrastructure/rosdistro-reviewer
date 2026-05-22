@@ -209,6 +209,36 @@ def _check_bloom_version(criteria, annotations, index):
     criteria.append(Criterion(recommendation, message))
 
 
+def _check_multiple_releases(criteria, annotations, index):
+    # Identify all modified release stanzas and their distributions
+    releases = tuple(
+        (distro_name, distro_file, repo['release'])
+        for distro_name, distro in (index or {}).items()
+        for distro_file, repos in (distro or {}).items()
+        for repo in (repos or {}).values()
+        if 'release' in repo and getattr(repo['release'], '__lines__', None)
+    )
+
+    if not releases:
+        return
+
+    distros_with_releases = {r[0] for r in releases}
+
+    if len(distros_with_releases) > 1:
+        recommendation = Recommendation.DISAPPROVE
+        message = 'Changes to release stanzas across multiple distributions ' \
+            'are not permitted'
+        annotations.extend(
+            Annotation(distro_file, release.__lines__, message)
+            for _, distro_file, release in releases
+        )
+    else:
+        recommendation = Recommendation.APPROVE
+        message = 'Release changes are confined to a single distribution'
+
+    criteria.append(Criterion(recommendation, message))
+
+
 def _read_index(
     path: Path,
     target_ref: Optional[str] = None,
@@ -323,5 +353,6 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
         _check_duplicates(criteria, annotations, index, entities)
         _check_gbp_org(criteria, annotations, index)
         _check_bloom_version(criteria, annotations, index)
+        _check_multiple_releases(criteria, annotations, index)
 
         return criteria, annotations
