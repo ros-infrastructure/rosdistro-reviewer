@@ -118,6 +118,13 @@ EXISTING_DISTROS = {
                 'version': 'main',
             },
         },
+        'invalid__name_existing': {
+            'source': {
+                'type': 'git',
+                'url': 'https://example.com/invalid__name_existing.git',
+                'version': 'main',
+            },
+        },
     },
     'jazzy': {
         'existing_jazzy': {
@@ -144,6 +151,13 @@ CONTROL_DISTROS = {
         },
     },
     'jazzy': {
+        'control_charlie': {
+            'release': {
+                'url':
+                    'https://github.com/ros2-gbp/control_charlie-release.git',
+                'version': '1.0.0-1',
+            },
+        },
         'control_delta': {
             'release': {
                 'url': 'https://github.com/other/control_delta-release.git',
@@ -178,7 +192,30 @@ VIOLATIONS = {
             },
             'echo': {
                 'release': {
-                    'packages': ['duplicate_name'],
+                    'packages': ['duplicate_name', 'delta'],
+                },
+            },
+        },
+    },
+    'C': {
+        # This repo has explicit packages that violate REP 144
+        'rolling': {
+            'foxtrot': {
+                'release': {
+                    'packages': [
+                        'invalid__name', '1invalid', 'i', 'A_invalid'
+                    ],
+                },
+            },
+        },
+    },
+    'D': {
+        # This repo has an implicit package name that violates REP 144
+        'rolling': {
+            'invalid__repo_name': {
+                'release': {
+                    'url': 'https://example.com/invalid__repo_name.git',
+                    'version': '1.0.0-1',
                 },
             },
         },
