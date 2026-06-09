@@ -149,6 +149,8 @@ CONTROL_DISTROS = {
                 'version': 'main',
             },
         },
+    },
+    'jazzy': {
         'control_charlie': {
             'release': {
                 'url':
@@ -156,8 +158,6 @@ CONTROL_DISTROS = {
                 'version': '1.0.0-1',
             },
         },
-    },
-    'jazzy': {
         'control_delta': {
             'release': {
                 'url': 'https://github.com/other/control_delta-release.git',
