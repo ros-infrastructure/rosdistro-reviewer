@@ -66,11 +66,12 @@ Analyzers use three main data structures to represent the :py:class:`~.rosdistro
 Recommendation
 ~~~~~~~~~~~~~~
 
-The :py:class:`~.rosdistro_reviewer.review.Recommendation` is an :py:class:`~.enum.IntEnum` that represents the overall outcome of a criterion. It has three possible values:
+The :py:class:`~.rosdistro_reviewer.review.Recommendation` is an :py:class:`~.enum.IntEnum` that represents the overall outcome of a criterion. It has four possible values:
 
 *   :py:attr:`Recommendation.APPROVE`: The changes satisfy the criterion.
 *   :py:attr:`Recommendation.NEUTRAL`: The changes are not applicable to the criterion, or the analysis is inconclusive.
 *   :py:attr:`Recommendation.DISAPPROVE`: The changes do not satisfy the criterion and need to be addressed.
+*   :py:attr:`Recommendation.CRITICAL`: The changes contain critical issues that prevent other checks from running, resulting in a non-zero exit code.
 
 Criterion
 ~~~~~~~~~

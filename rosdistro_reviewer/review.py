@@ -77,6 +77,7 @@ def _format_code_block(
 class Recommendation(IntEnum):
     """Singular recommendations a review can make."""
 
+    CRITICAL = -1
     DISAPPROVE = 0
     NEUTRAL = 1
     APPROVE = 2
@@ -84,6 +85,7 @@ class Recommendation(IntEnum):
     def as_symbol(self) -> str:
         """Convert the recommendation to a unicode symbol."""
         return {
+            Recommendation.CRITICAL: '\U0001F6D1',
             Recommendation.DISAPPROVE: '\U0000274C',
             Recommendation.NEUTRAL: '\U0001F4DD',
             Recommendation.APPROVE: '\U00002705',
@@ -92,6 +94,7 @@ class Recommendation(IntEnum):
     def as_text(self) -> str:
         """Convert the recommendation to a shot text summary."""
         return {
+            Recommendation.CRITICAL: 'Changes required',
             Recommendation.DISAPPROVE: 'Changes recommended',
             Recommendation.NEUTRAL: 'No changes recommended, '
                                     'but requires further review',
