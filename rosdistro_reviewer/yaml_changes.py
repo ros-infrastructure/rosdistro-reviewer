@@ -8,6 +8,7 @@ from typing import Iterable
 from typing import Mapping
 from typing import Optional
 
+from colcon_core.generic_decorator import GenericDecorator
 from git import Repo
 from rosdistro_reviewer.git_lines import get_added_lines
 from rosdistro_reviewer.yaml_lines import AnnotatedSafeLoader
@@ -86,13 +87,17 @@ def get_changed_yaml(
         with Repo(path) as repo:
             for yaml_path in paths:
                 git_yaml_path = str(PurePosixPath(Path(yaml_path)))
-                data[yaml_path] = yaml.load(
+                stream = GenericDecorator(
                     repo.tree(head_ref)[git_yaml_path].data_stream,
-                    Loader=AnnotatedSafeLoader)
+                    name=yaml_path)
+                data[yaml_path] = yaml.load(
+                    stream, Loader=AnnotatedSafeLoader)
     else:
         for yaml_path in paths:
             with (path / yaml_path).open('r') as f:
-                data[yaml_path] = yaml.load(f, Loader=AnnotatedSafeLoader)
+                stream = GenericDecorator(f, name=yaml_path)
+                data[yaml_path] = yaml.load(
+                    stream, Loader=AnnotatedSafeLoader)
 
     for yaml_path, yaml_data in data.items():
         _isolate(yaml_data, changes.get(yaml_path, ()))
