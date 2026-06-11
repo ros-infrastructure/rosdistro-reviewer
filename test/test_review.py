@@ -53,3 +53,20 @@ def test_to_text():
     assert 'bar' in text
     assert Recommendation.DISAPPROVE.as_text() in text
     assert 'wrapping' in text
+
+
+def test_to_text_grouped_annotations():
+    review = Review()
+    review.annotations.append(Annotation(
+        file=__file__,
+        lines=range(1, 3),
+        message='First comment on exact same block'))
+    review.annotations.append(Annotation(
+        file=__file__,
+        lines=range(1, 3),
+        message='Second comment on exact same block'))
+
+    text = review.to_text()
+    assert text.count('test_review.py') == 1
+    assert 'First comment on exact same block' in text
+    assert 'Second comment on exact same block' in text

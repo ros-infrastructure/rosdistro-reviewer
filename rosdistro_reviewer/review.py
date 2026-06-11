@@ -10,6 +10,7 @@ import textwrap
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 
@@ -174,15 +175,20 @@ class Review:
             _bubblify_text(message, width=width - 2),
             ' ')
 
+        grouped_annotations: Dict[Tuple[str, range], List[str]] = {}
         for annotation in self.annotations:
+            key = (annotation.file, annotation.lines)
+            grouped_annotations.setdefault(key, []).append(annotation.message)
+
+        for (file, lines), messages in grouped_annotations.items():
             result += '\n' + textwrap.indent(
                 '\n' + _bubblify_text([
                     _format_code_block(
-                        annotation.file,
-                        annotation.lines,
+                        file,
+                        lines,
                         width=width - 9,
                         root=root),
-                    annotation.message,
+                    *messages,
                 ], width=width - 5),
                 '  ¦ ', predicate=lambda _: True)
 
