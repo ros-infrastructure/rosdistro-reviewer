@@ -1,6 +1,7 @@
 # Copyright 2024 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import json
 import logging
 import os
 from typing import Any
@@ -45,11 +46,7 @@ Having your package included in a ROS Distro is a badge of quality, and we recom
 
 # Need Help?
 
-Please post your questions to [Robotics Stack Exchange](https://docs.ros.org/) or refer to the `Infrastructure General` channel on our [Zulip server](https://openrobotics.zulipchat.com/).
-
----
-
-"""  # noqa: E501
+Please post your questions to [Robotics Stack Exchange](https://docs.ros.org/) or refer to the `Infrastructure General` channel on our [Zulip server](https://openrobotics.zulipchat.com/)."""  # noqa: E501
 
 
 class GitHubSubmitter(ReviewSubmitterExtensionPoint):
@@ -129,7 +126,38 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
             review.user.login == 'github-actions[bot]'
             for review in pr.get_reviews())
         if not already_reviewed:
-            message = INTRODUCTION + message
+            author_association = None
+            event_path = os.environ.get('GITHUB_EVENT_PATH')
+            if event_path and os.path.exists(event_path):
+                try:
+                    with open(event_path, 'r', encoding='utf-8') as f:
+                        event_data = json.load(f)
+                except (json.JSONDecodeError, OSError) as e:
+                    colcon_logger.warning(
+                        'Failed to read author_association from '
+                        f'GITHUB_EVENT_PATH: {e}')
+                else:
+                    pull_request = event_data.get('pull_request') or {}
+                    author_association = pull_request.get('author_association')
+
+            if author_association in ('MEMBER', 'OWNER', 'COLLABORATOR'):
+                pass
+            elif author_association == 'CONTRIBUTOR':
+                wrapped_intro = (
+                    '<details>\n'
+                    '<summary>Introduction</summary>\n\n'
+                    f'{INTRODUCTION}\n\n'
+                    '</details>\n\n'
+                )
+                message = wrapped_intro + message
+            else:
+                wrapped_intro = (
+                    '<details open>\n'
+                    '<summary>Introduction</summary>\n\n'
+                    f'{INTRODUCTION}\n\n'
+                    '</details>\n\n'
+                )
+                message = wrapped_intro + message
 
         pr.create_review(
             body=message,
