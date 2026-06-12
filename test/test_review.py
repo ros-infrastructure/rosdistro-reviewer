@@ -4,15 +4,21 @@
 import os
 from pathlib import Path
 
+import pytest
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Criterion
 from rosdistro_reviewer.review import Recommendation
 from rosdistro_reviewer.review import Review
 
 
-def test_to_text():
+@pytest.mark.parametrize(('colored',), (
+    (None,),
+    (True,),
+    (False,),
+))
+def test_to_text(colored):
     review = Review()
-    text = review.to_text()
+    text = review.to_text(colored=colored)
     assert Recommendation.NEUTRAL.as_text() in text
 
     review.annotations.append(Annotation(
@@ -29,7 +35,7 @@ def test_to_text():
             rationale='Things look great'),
     ]
 
-    text = review.to_text()
+    text = review.to_text(colored=colored)
     assert 'Here is the license' in text
     assert 'Here is the whole header' in text
     assert 'foo' in text
@@ -48,7 +54,7 @@ def test_to_text():
         lines=range(1, 2),
         message='This annotates a file which does not exist'))
 
-    text = review.to_text(root=Path())
+    text = review.to_text(root=Path(), colored=colored)
     assert 'annotates a file' in text
     assert 'bar' in text
     assert Recommendation.DISAPPROVE.as_text() in text

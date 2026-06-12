@@ -22,6 +22,7 @@ github
 hexsha
 https
 india
+isatty
 isdigit
 iterdir
 itertools
