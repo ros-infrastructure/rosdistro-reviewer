@@ -9,6 +9,7 @@ committish
 connectionpool
 corge
 debian
+deduplication
 deserialized
 diffs
 distro
