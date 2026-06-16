@@ -14,6 +14,8 @@ import pytest
 from rosdistro_reviewer.element_analyzer import ElementAnalyzerExtensionPoint
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Criterion
+from rosdistro_reviewer.review import Recommendation
+from rosdistro_reviewer.review import Review
 from rosdistro_reviewer.submitter import ReviewSubmitterExtensionPoint
 from rosdistro_reviewer.verb.review import ReviewVerb
 
@@ -94,3 +96,34 @@ def test_verb_review_no_repo(tmp_path):
     ):
         with pytest.raises(RuntimeError):
             extension.main(context=context)
+
+
+@pytest.mark.parametrize('recommendation,expected_exit_code', [
+    (Recommendation.CRITICAL, 1),
+    (Recommendation.DISAPPROVE, 0),
+    (Recommendation.NEUTRAL, 0),
+    (Recommendation.APPROVE, 0),
+], ids=['CRITICAL', 'DISAPPROVE', 'NEUTRAL', 'APPROVE'])
+def test_verb_review_return_codes(
+    empty_repo, recommendation, expected_exit_code,
+) -> None:
+    extension = ReviewVerb()
+    extension.add_arguments(parser=Mock())
+
+    context = CommandContext(
+        command_name='rosdistro-reviewer',
+        args=Mock())
+    context.args.head_ref = None
+    context.args.target_ref = None
+
+    review = Review()
+    review.elements['dummy'] = [Criterion(recommendation, 'dummy reason')]
+
+    with patch(
+        'rosdistro_reviewer.verb.review.Path.cwd',
+        return_value=Path(empty_repo.working_tree_dir),
+    ), patch(
+        'rosdistro_reviewer.verb.review.analyze',
+        return_value=review,
+    ):
+        assert expected_exit_code == extension.main(context=context)
