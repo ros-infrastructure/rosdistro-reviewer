@@ -222,7 +222,7 @@ def test_yamllint_syntax_error_on_disk(
         extension.analyze(repo_dir)
 
     assert e.value.problem_mark is not None
-    assert e.value.problem_mark.name == yaml_path
+    assert e.value.problem_mark.name == str(Path(yaml_path))
     assert e.value.problem_mark.line == 4
 
 
@@ -243,5 +243,5 @@ def test_yamllint_syntax_error_in_git_ref(
         extension.analyze(repo_dir, target_ref='HEAD~1', head_ref='HEAD')
 
     assert e.value.problem_mark is not None
-    assert e.value.problem_mark.name == yaml_path
+    assert e.value.problem_mark.name == str(Path(yaml_path))
     assert e.value.problem_mark.line == 4

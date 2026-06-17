@@ -99,6 +99,6 @@ def get_added_lines(
         return None
 
     return {
-        path: list(_rangeify(sorted(lines.get(os.path.normpath(path), ()))))
+        path: list(_rangeify(sorted(lines.get(path, ()))))
         for path in (paths if paths is not None else lines.keys())
     }

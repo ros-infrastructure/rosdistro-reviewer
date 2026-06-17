@@ -42,7 +42,7 @@ def test_yaml_syntax_error_on_disk(repo_with_invalid_yaml: Repo) -> None:
         )
 
     assert e.value.problem_mark is not None
-    assert e.value.problem_mark.name == yaml_path
+    assert e.value.problem_mark.name == str(Path(yaml_path))
     assert e.value.problem_mark.line == 1
 
 
@@ -65,5 +65,5 @@ def test_yaml_syntax_error_in_git_ref(repo_with_invalid_yaml: Repo) -> None:
         )
 
     assert e.value.problem_mark is not None
-    assert e.value.problem_mark.name == yaml_path
+    assert e.value.problem_mark.name == str(Path(yaml_path))
     assert e.value.problem_mark.line == 1
