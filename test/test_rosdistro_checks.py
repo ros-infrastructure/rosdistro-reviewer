@@ -415,3 +415,46 @@ def test_bloom_version_check(rosdistro_index_repo, tmp_path):
             if 'Failed to parse GitHub event file' in c.rationale]
         assert len(bloom_c) == 1
         assert bloom_c[0].recommendation == Recommendation.NEUTRAL
+
+
+@pytest.fixture
+def repo_with_syntax_error_index(rosdistro_index_repo: Repo) -> Repo:
+    assert rosdistro_index_repo.working_tree_dir is not None
+    repo_dir = Path(rosdistro_index_repo.working_tree_dir)
+    index_path = repo_dir / 'index-v4.yaml'
+    index_path.write_text('---\nfoo: @bar\n')
+    return rosdistro_index_repo
+
+
+def test_rosdistro_syntax_error_on_disk(
+    repo_with_syntax_error_index: Repo,
+) -> None:
+    assert repo_with_syntax_error_index.working_tree_dir is not None
+    repo_dir = Path(repo_with_syntax_error_index.working_tree_dir)
+    extension = RosdistroAnalyzer()
+
+    with pytest.raises(yaml.MarkedYAMLError) as e:
+        extension.analyze(repo_dir)
+
+    assert e.value.problem_mark is not None
+    assert e.value.problem_mark.name == 'index-v4.yaml'
+    assert e.value.problem_mark.line == 1
+
+
+def test_rosdistro_syntax_error_in_git_ref(
+    repo_with_syntax_error_index: Repo,
+) -> None:
+    assert repo_with_syntax_error_index.working_tree_dir is not None
+    repo_dir = Path(repo_with_syntax_error_index.working_tree_dir)
+    extension = RosdistroAnalyzer()
+
+    index_path = repo_dir / 'index-v4.yaml'
+    repo_with_syntax_error_index.index.add(str(index_path))
+    repo_with_syntax_error_index.index.commit('Commit invalid index')
+
+    with pytest.raises(yaml.MarkedYAMLError) as e:
+        extension.analyze(repo_dir, target_ref='HEAD~1', head_ref='HEAD')
+
+    assert e.value.problem_mark is not None
+    assert e.value.problem_mark.name == 'index-v4.yaml'
+    assert e.value.problem_mark.line == 1
