@@ -12,6 +12,7 @@ import textwrap
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 
@@ -145,6 +146,7 @@ def _format_code_block(
 class Recommendation(IntEnum):
     """Singular recommendations a review can make."""
 
+    CRITICAL = -1
     DISAPPROVE = 0
     NEUTRAL = 1
     APPROVE = 2
@@ -152,6 +154,7 @@ class Recommendation(IntEnum):
     def as_symbol(self) -> str:
         """Convert the recommendation to a unicode symbol."""
         return {
+            Recommendation.CRITICAL: '\U0001F6D1',
             Recommendation.DISAPPROVE: '\U0000274C',
             Recommendation.NEUTRAL: '\U0001F4DD',
             Recommendation.APPROVE: '\U00002705',
@@ -160,6 +163,7 @@ class Recommendation(IntEnum):
     def as_text(self, colored: bool = False) -> str:
         """Convert the recommendation to a shot text summary."""
         text = {
+            Recommendation.CRITICAL: 'Changes required',
             Recommendation.DISAPPROVE: 'Changes recommended',
             Recommendation.NEUTRAL: 'No changes recommended, '
                                     'but requires further review',
@@ -167,6 +171,7 @@ class Recommendation(IntEnum):
         }[self]
         if colored:
             color_code = {
+                Recommendation.CRITICAL: '\033[1;31m',
                 Recommendation.DISAPPROVE: '\033[1;31m',
                 Recommendation.NEUTRAL: '\033[1;33m',
                 Recommendation.APPROVE: '\033[1;32m',
@@ -262,16 +267,21 @@ class Review:
             _bubblify_text(message, width=width - 2),
             ' ')
 
+        grouped_annotations: Dict[Tuple[str, range], List[str]] = {}
         for annotation in self.annotations:
+            key = (annotation.file, annotation.lines)
+            grouped_annotations.setdefault(key, []).append(annotation.message)
+
+        for (file, lines), messages in grouped_annotations.items():
             result += '\n' + textwrap.indent(
                 '\n' + _bubblify_text([
                     _format_code_block(
-                        annotation.file,
-                        annotation.lines,
+                        file,
+                        lines,
                         width=width - 9,
                         root=root,
                         colored=colored),
-                    annotation.message,
+                    *messages,
                 ], width=width - 5, border_color=90 if colored else None),
                 '  ¦ ', predicate=lambda _: True)
 
