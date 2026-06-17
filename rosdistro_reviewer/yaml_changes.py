@@ -89,13 +89,13 @@ def get_changed_yaml(
                 git_yaml_path = str(PurePosixPath(Path(yaml_path)))
                 stream = GenericDecorator(
                     repo.tree(head_ref)[git_yaml_path].data_stream,
-                    name=yaml_path)
+                    name=str(Path(yaml_path)))
                 data[yaml_path] = yaml.load(
                     stream, Loader=AnnotatedSafeLoader)
     else:
         for yaml_path in paths:
             with (path / yaml_path).open('r') as f:
-                stream = GenericDecorator(f, name=yaml_path)
+                stream = GenericDecorator(f, name=str(Path(yaml_path)))
                 data[yaml_path] = yaml.load(
                     stream, Loader=AnnotatedSafeLoader)
 

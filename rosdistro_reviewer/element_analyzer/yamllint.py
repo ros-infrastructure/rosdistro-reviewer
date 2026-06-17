@@ -76,7 +76,7 @@ def _get_previous_keys(
     :param yaml_path: Relative path to the YAML file.
     :returns: Mapping from line number to previous key line number.
     """
-    stream = GenericDecorator(io.StringIO(raw_data), name=yaml_path)
+    stream = GenericDecorator(io.StringIO(raw_data), name=str(Path(yaml_path)))
     data = yaml.load(stream, Loader=AnnotatedSafeLoader)
     previous_keys = {}
 
