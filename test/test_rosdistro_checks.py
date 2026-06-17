@@ -31,21 +31,29 @@ def _generate_index(distro_names):
     }
 
 
-@pytest.fixture
-def rosdistro_index_repo(empty_repo) -> Iterable[Repo]:
-    repo_dir = Path(empty_repo.working_tree_dir)
-
-    for distro_name, repos in EXISTING_DISTROS.items():
+def _write_distributions(distros, repo_dir):
+    for distro_name, repos in distros.items():
         file_path = repo_dir / distro_name / 'distribution.yaml'
         file_path.parent.mkdir(parents=True, exist_ok=True)
         with file_path.open('w') as f:
             yaml.dump({'repositories': repos}, f)
 
-        empty_repo.index.add(str(file_path))
-
     index_path = repo_dir / 'index-v4.yaml'
     with index_path.open('w') as f:
-        yaml.dump(_generate_index(EXISTING_DISTROS.keys()), f)
+        yaml.dump(_generate_index(distros.keys()), f)
+
+    return index_path
+
+
+@pytest.fixture
+def rosdistro_index_repo(empty_repo) -> Iterable[Repo]:
+    repo_dir = Path(empty_repo.working_tree_dir)
+
+    index_path = _write_distributions(EXISTING_DISTROS, repo_dir)
+
+    for distro_name in EXISTING_DISTROS.keys():
+        file_path = repo_dir / distro_name / 'distribution.yaml'
+        empty_repo.index.add(str(file_path))
 
     empty_repo.index.add(str(index_path))
     empty_repo.index.commit('Add distribution files')
@@ -270,30 +278,54 @@ def test_control(rosdistro_index_repo):
     extension = RosdistroAnalyzer()
 
     distros = _merge_distributions(EXISTING_DISTROS, CONTROL_DISTROS)
-    for distro_name, repos in distros.items():
-        file_path = repo_dir / distro_name / 'distribution.yaml'
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        with file_path.open('w') as f:
-            yaml.dump({'repositories': repos}, f)
-
-    index_path = repo_dir / 'index-v4.yaml'
-    with index_path.open('w') as f:
-        yaml.dump(_generate_index(distros.keys()), f)
+    _write_distributions(distros, repo_dir)
 
     criteria, annotations = extension.analyze(repo_dir)
     assert criteria is not None and not annotations
     assert all(Recommendation.APPROVE == c.recommendation for c in criteria)
 
 
+def test_target_ref(rosdistro_index_repo):
+    repo_dir = Path(rosdistro_index_repo.working_tree_dir)
+    extension = RosdistroAnalyzer()
+
+    distros = _merge_distributions(EXISTING_DISTROS, CONTROL_DISTROS)
+    index_path = _write_distributions(distros, repo_dir)
+
+    for distro_name in distros.keys():
+        file_path = repo_dir / distro_name / 'distribution.yaml'
+        rosdistro_index_repo.index.add(str(file_path))
+    rosdistro_index_repo.index.add(str(index_path))
+    rosdistro_index_repo.index.commit('Add control distros')
+
+    violation_distros = VIOLATIONS['E']
+    violation_merged = _merge_distributions(distros, violation_distros)
+    _write_distributions(violation_merged, repo_dir)
+
+    criteria, annotations = extension.analyze(repo_dir, head_ref='HEAD')
+    assert criteria and not annotations
+    assert all(Recommendation.APPROVE == c.recommendation for c in criteria)
+
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria and annotations
+    assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
+
+    for distro_name in violation_merged.keys():
+        file_path = repo_dir / distro_name / 'distribution.yaml'
+        rosdistro_index_repo.index.add(str(file_path))
+    rosdistro_index_repo.index.add(str(index_path))
+    rosdistro_index_repo.index.commit('Add check violation')
+
+    criteria, annotations = extension.analyze(repo_dir, head_ref='HEAD')
+    assert criteria and annotations
+    assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
+
+
 def test_removal_only(rosdistro_index_repo):
     repo_dir = Path(rosdistro_index_repo.working_tree_dir)
     extension = RosdistroAnalyzer()
 
-    for distro_name in EXISTING_DISTROS.keys():
-        file_path = repo_dir / distro_name / 'distribution.yaml'
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        with file_path.open('w') as f:
-            yaml.dump({'repositories': {}}, f)
+    _write_distributions({distro: {} for distro in EXISTING_DISTROS}, repo_dir)
 
     assert (None, None) == extension.analyze(repo_dir)
 
@@ -303,15 +335,7 @@ def test_violation(rosdistro_index_repo, violation_distros):
     extension = RosdistroAnalyzer()
 
     distros = _merge_distributions(EXISTING_DISTROS, violation_distros)
-    for distro_name, repos in distros.items():
-        file_path = repo_dir / distro_name / 'distribution.yaml'
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        with file_path.open('w') as f:
-            yaml.dump({'repositories': repos}, f)
-
-    index_path = repo_dir / 'index-v4.yaml'
-    with index_path.open('w') as f:
-        yaml.dump(_generate_index(distros.keys()), f)
+    _write_distributions(distros, repo_dir)
 
     criteria, annotations = extension.analyze(repo_dir)
     assert criteria and annotations
@@ -335,15 +359,7 @@ def test_bloom_version_check(rosdistro_index_repo, tmp_path):
         }
     }
     merged_distros = _merge_distributions(EXISTING_DISTROS, distros)
-    for distro_name, repos in merged_distros.items():
-        file_path = repo_dir / distro_name / 'distribution.yaml'
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        with file_path.open('w') as f:
-            yaml.dump({'repositories': repos}, f)
-
-    index_path = repo_dir / 'index-v4.yaml'
-    with index_path.open('w') as f:
-        yaml.dump(_generate_index(merged_distros.keys()), f)
+    _write_distributions(merged_distros, repo_dir)
 
     # Test 1: No PR event path -> should return None, None
     with patch.dict(os.environ):
