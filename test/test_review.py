@@ -3,12 +3,43 @@
 
 import os
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
+from rosdistro_reviewer.review import _should_use_color
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Criterion
 from rosdistro_reviewer.review import Recommendation
 from rosdistro_reviewer.review import Review
+
+
+def test_should_use_color() -> None:
+    with patch.dict(os.environ, {'NO_COLOR': '1'}, clear=True):
+        assert not _should_use_color()
+
+    with patch.dict(os.environ, {'FORCE_COLOR': '1'}, clear=True):
+        assert _should_use_color()
+
+    with patch.dict(
+        os.environ,
+        {'NO_COLOR': '1', 'FORCE_COLOR': '1'},
+        clear=True,
+    ):
+        assert not _should_use_color()
+
+    with patch.dict(os.environ, {'TERM': 'dumb'}, clear=True):
+        assert not _should_use_color()
+
+    with patch.dict(os.environ, {}, clear=True):
+        with patch('sys.stdout') as mock_stdout:
+            mock_stdout.isatty.return_value = True
+            assert _should_use_color()
+
+            mock_stdout.isatty.return_value = False
+            assert not _should_use_color()
+
+            del mock_stdout.isatty
+            assert not _should_use_color()
 
 
 @pytest.mark.parametrize(('colored',), (
@@ -16,6 +47,7 @@ from rosdistro_reviewer.review import Review
     (True,),
     (False,),
 ))
+@patch.dict(os.environ, {'NO_COLOR': '1'})
 def test_to_text(colored):
     review = Review()
     text = review.to_text(colored=colored)
@@ -39,8 +71,9 @@ def test_to_text(colored):
     assert 'Here is the license' in text
     assert 'Here is the whole header' in text
     assert 'foo' in text
-    assert Recommendation.APPROVE.as_text() in text
+    assert Recommendation.APPROVE.as_text(colored=colored) in text
     assert 'Things look great' in text
+    assert bool(colored) == ('\033[' in text)
 
     review.elements['bar'] = [
         Criterion(
@@ -57,5 +90,6 @@ def test_to_text(colored):
     text = review.to_text(root=Path(), colored=colored)
     assert 'annotates a file' in text
     assert 'bar' in text
-    assert Recommendation.DISAPPROVE.as_text() in text
+    assert Recommendation.DISAPPROVE.as_text(colored=colored) in text
     assert 'wrapping' in text
+    assert bool(colored) == ('\033[' in text)

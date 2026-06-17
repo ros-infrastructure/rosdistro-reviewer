@@ -16,9 +16,9 @@ from typing import Union
 
 
 def _should_use_color() -> bool:
-    if 'NO_COLOR' in os.environ:
+    if os.environ.get('NO_COLOR'):
         return False
-    elif 'FORCE_COLOR' in os.environ:
+    elif os.environ.get('FORCE_COLOR'):
         return True
     elif os.environ.get('TERM') == 'dumb':
         return False
@@ -55,14 +55,10 @@ def _bubblify_text(
     *,
     color: Optional[int] = None,
     border_color: Optional[int] = None,
-    boarder_color: Optional[int] = None,
 ) -> str:
     norm_color = f'\033[{color}m' if color is not None else None
-    actual_border = (
-        border_color if border_color is not None else boarder_color
-    )
     norm_border_color = (
-        f'\033[{actual_border}m' if actual_border is not None else None
+        f'\033[{border_color}m' if border_color is not None else None
     )
 
     top_border = '/' + ('—' * (width - 2)) + '\\'
@@ -138,14 +134,10 @@ def _format_code_block(
             if num >= lines.stop:
                 break
             if colored:
-                line_num = f'\033[90m  {num:>{digits}} |\033[0m '
-                code_content = line[:width - digits - 5].rstrip()
-                if code_content:
-                    code_content = f'\033[37m{code_content}\033[0m'
-                result += f'\n{line_num}{code_content}'
+                result += f'\n  \033[90m{num:>{digits}} |\033[0m '
             else:
                 result += f'\n  {num:>{digits}} | '
-                result += line[:width - digits - 5].rstrip()
+            result += line[:width - digits - 5].rstrip()
 
     return result
 
