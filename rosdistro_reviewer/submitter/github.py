@@ -19,7 +19,7 @@ from rosdistro_reviewer.submitter import ReviewSubmitterExtensionPoint
 GITHUB_TOKEN_ENVIRONMENT_VARIABLE = EnvironmentVariable(
     'GITHUB_TOKEN', 'Authentication token secret for GitHub')
 
-INTRODUCTION = """Thanks for sending a pull request to ROS distro!
+INTRODUCTION = """Thanks for sending a pull request to ROS distro!<br><br>
 
 This is an automated tool that helps check your pull request for correctness.
 This tool checks a number of attributes associated with your ROS package and generates a report that helps our reviewers merge your pull request in a timely fashion. Here are a few things to consider when sending adding or updating a package to ROS Distro.
@@ -150,10 +150,10 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
                     '' if author_association == 'CONTRIBUTOR' else ' open'
                 )
                 message = (
-                    f'<details{open_attr}>'
-                    '<summary>Introduction</summary>'
-                    f'{INTRODUCTION}'
-                    '</details>'
+                    f'<details{open_attr}>\n'
+                    '<summary>Introduction</summary>\n'
+                    f'<br>{INTRODUCTION}\n'
+                    '</details>\n\n---\n\n'
                 ) + message
 
         pr.create_review(
