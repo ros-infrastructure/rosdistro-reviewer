@@ -140,24 +140,18 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
                     pull_request = event_data.get('pull_request') or {}
                     author_association = pull_request.get('author_association')
 
-            if author_association in ('MEMBER', 'OWNER', 'COLLABORATOR'):
-                pass
-            elif author_association == 'CONTRIBUTOR':
-                wrapped_intro = (
-                    '<details>\n'
-                    '<summary>Introduction</summary>\n\n'
-                    f'{INTRODUCTION}\n\n'
-                    '</details>\n\n'
+            if author_association not in (
+                'MEMBER', 'OWNER', 'COLLABORATOR', 'CONTRIBUTOR',
+            ):
+                open_attr = (
+                    '' if author_association == 'CONTRIBUTOR' else ' open'
                 )
-                message = wrapped_intro + message
-            else:
-                wrapped_intro = (
-                    '<details open>\n'
-                    '<summary>Introduction</summary>\n\n'
-                    f'{INTRODUCTION}\n\n'
-                    '</details>\n\n'
-                )
-                message = wrapped_intro + message
+                message = (
+                    f'<details{open_attr}>'
+                    '<summary>Introduction</summary>'
+                    f'{INTRODUCTION}'
+                    '</details>'
+                ) + message
 
         pr.create_review(
             body=message,
