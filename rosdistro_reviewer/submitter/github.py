@@ -1,6 +1,7 @@
 # Copyright 2024 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import json
 import logging
 import os
 from typing import Any
@@ -18,7 +19,7 @@ from rosdistro_reviewer.submitter import ReviewSubmitterExtensionPoint
 GITHUB_TOKEN_ENVIRONMENT_VARIABLE = EnvironmentVariable(
     'GITHUB_TOKEN', 'Authentication token secret for GitHub')
 
-INTRODUCTION = """Thanks for sending a pull request to ROS distro!
+INTRODUCTION = """Thanks for sending a pull request to ROS distro!<br><br>
 
 This is an automated tool that helps check your pull request for correctness.
 This tool checks a number of attributes associated with your ROS package and generates a report that helps our reviewers merge your pull request in a timely fashion. Here are a few things to consider when sending adding or updating a package to ROS Distro.
@@ -45,11 +46,7 @@ Having your package included in a ROS Distro is a badge of quality, and we recom
 
 # Need Help?
 
-Please post your questions to [Robotics Stack Exchange](https://docs.ros.org/) or refer to the `Infrastructure General` channel on our [Zulip server](https://openrobotics.zulipchat.com/).
-
----
-
-"""  # noqa: E501
+Please post your questions to [Robotics Stack Exchange](https://docs.ros.org/) or refer to the `Infrastructure General` channel on our [Zulip server](https://openrobotics.zulipchat.com/)."""  # noqa: E501
 
 
 class GitHubSubmitter(ReviewSubmitterExtensionPoint):
@@ -132,7 +129,32 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
         recommendation = review.recommendation
 
         if latest_review is None:
-            message = INTRODUCTION + message
+            author_association = None
+            event_path = os.environ.get('GITHUB_EVENT_PATH')
+            if event_path and os.path.exists(event_path):
+                try:
+                    with open(event_path, 'r', encoding='utf-8') as f:
+                        event_data = json.load(f)
+                except (json.JSONDecodeError, OSError) as e:
+                    colcon_logger.warning(
+                        'Failed to read author_association from '
+                        f'GITHUB_EVENT_PATH: {e}')
+                else:
+                    pull_request = event_data.get('pull_request') or {}
+                    author_association = pull_request.get('author_association')
+
+            if author_association not in (
+                'MEMBER', 'OWNER', 'COLLABORATOR', 'CONTRIBUTOR',
+            ):
+                open_attr = (
+                    '' if author_association == 'CONTRIBUTOR' else ' open'
+                )
+                message = (
+                    f'<details{open_attr}>\n'
+                    '<summary>Introduction</summary>\n'
+                    f'<br>{INTRODUCTION}\n'
+                    '</details>\n\n---\n\n'
+                ) + message
 
         pr.create_review(
             body=message,
