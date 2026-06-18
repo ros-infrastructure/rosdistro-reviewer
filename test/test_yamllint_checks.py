@@ -8,6 +8,7 @@ from git import Repo
 import pytest
 from rosdistro_reviewer.element_analyzer.yamllint import YamllintAnalyzer
 from rosdistro_reviewer.review import Recommendation
+import yaml
 
 # The control prefix intentionally contains a violation
 # to verify that we only surface problems related to new lines
@@ -174,3 +175,80 @@ def test_violation(repo_with_yaml, violation):
     criteria, annotations = extension.analyze(repo_dir)
     assert criteria and annotations
     assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
+
+
+@pytest.fixture
+def repo_with_yamllint_and_yaml(empty_repo: Repo) -> Repo:
+    assert empty_repo.working_tree_dir is not None
+    repo_dir = Path(empty_repo.working_tree_dir)
+
+    yamllint_file = repo_dir / '.yamllint'
+    yamllint_file.write_text('\n'.join((
+        '---',
+        'extends: default',
+        'rules:',
+        '  key-ordering: enable',
+    )) + '\n')
+
+    yaml_file = repo_dir / 'subdir' / 'file.yaml'
+    yaml_file.parent.mkdir(exist_ok=True)
+
+    # Commit pre-existing syntax error `@bar`
+    # Alone, this will not cause the yamllint analyzer to parse the YAML
+    yaml_file.write_text('\n'.join((
+        '---',
+        'bravo: charlie',
+        'yankee: @bar',
+    )) + '\n')
+    empty_repo.index.add(str(yaml_file))
+    empty_repo.index.add(str(yamllint_file))
+    empty_repo.index.commit('Add base YAML')
+
+    # Introduce zulu_out_of_order to trigger parsing
+    yaml_file.write_text('\n'.join((
+        '---',
+        'bravo: charlie',
+        'zulu_out_of_order:',
+        '  - alpha',
+        'yankee: @bar',
+    )) + '\n')
+
+    return empty_repo
+
+
+def test_yamllint_syntax_error_on_disk(
+    repo_with_yamllint_and_yaml: Repo,
+) -> None:
+    assert repo_with_yamllint_and_yaml.working_tree_dir is not None
+    repo_dir = Path(repo_with_yamllint_and_yaml.working_tree_dir)
+    extension = YamllintAnalyzer()
+
+    yaml_path = 'subdir/file.yaml'
+
+    with pytest.raises(yaml.MarkedYAMLError) as e:
+        extension.analyze(repo_dir)
+
+    assert e.value.problem_mark is not None
+    assert e.value.problem_mark.name == str(Path(yaml_path))
+    assert e.value.problem_mark.line == 4
+
+
+def test_yamllint_syntax_error_in_git_ref(
+    repo_with_yamllint_and_yaml: Repo,
+) -> None:
+    assert repo_with_yamllint_and_yaml.working_tree_dir is not None
+    repo_dir = Path(repo_with_yamllint_and_yaml.working_tree_dir)
+    extension = YamllintAnalyzer()
+
+    yaml_path = 'subdir/file.yaml'
+    yaml_file = repo_dir / yaml_path
+
+    repo_with_yamllint_and_yaml.index.add(str(yaml_file))
+    repo_with_yamllint_and_yaml.index.commit('Commit invalid YAML')
+
+    with pytest.raises(yaml.MarkedYAMLError) as e:
+        extension.analyze(repo_dir, target_ref='HEAD~1', head_ref='HEAD')
+
+    assert e.value.problem_mark is not None
+    assert e.value.problem_mark.name == str(Path(yaml_path))
+    assert e.value.problem_mark.line == 4
