@@ -113,6 +113,13 @@ def test_target_ref(repo_with_yaml):
     assert criteria and annotations
     assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
 
+    repo_with_yaml.index.add(str(yaml_file))
+    repo_with_yaml.index.commit('Add a check violation')
+
+    criteria, annotations = extension.analyze(repo_dir, head_ref='HEAD')
+    assert criteria and annotations
+    assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
+
 
 def test_yamllint_config(repo_with_yaml):
     repo_dir = Path(repo_with_yaml.working_tree_dir)
