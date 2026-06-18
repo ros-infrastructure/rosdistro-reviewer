@@ -118,6 +118,12 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
         repo = github.get_repo(repo_id)
         pr = repo.get_pull(pr_id)
 
+        # Check if we've already posted a review for this PR
+        latest_review = None
+        for r in pr.get_reviews():
+            if r.user.login == 'github-actions[bot]':
+                latest_review = r
+
         create_review_args: Dict[str, Any] = {}
         if review.head_ref:
             create_review_args['commit'] = repo.get_commit(review.head_ref)
@@ -125,11 +131,7 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
         message = review.summarize()
         recommendation = review.recommendation
 
-        # Check if we've already posted a review for this PR
-        already_reviewed = any(
-            review.user.login == 'github-actions[bot]'
-            for review in pr.get_reviews())
-        if not already_reviewed:
+        if latest_review is None:
             message = INTRODUCTION + message
 
         pr.create_review(
@@ -137,3 +139,19 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
             event=RECOMMENDATION_EVENTS[recommendation],
             comments=comments,
             **create_review_args)
+
+        if (
+            latest_review is not None and
+            latest_review.state in ('CHANGES_REQUESTED', 'APPROVED') and
+            recommendation == Recommendation.NEUTRAL
+        ):
+            try:
+                # A 'COMMENT' review on GitHub doesn't change the approval
+                # state from the previous review, so if we're transitioning
+                # from APPROVE or CHANGES_REQUESTED to COMMENT, we need to
+                # explicitly dismiss the previous review so the state is
+                # updated.
+                latest_review.dismiss('Previous automated review is stale')
+            except Exception as e:  # noqa: B902
+                raise RuntimeError(
+                    'Failed to dismiss previously posted review') from e
