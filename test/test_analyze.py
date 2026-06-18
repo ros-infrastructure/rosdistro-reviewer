@@ -82,6 +82,13 @@ def test_analyze(empty_repo):
 
     assert review is None
 
+    empty_repo.index.commit('Empty commit')
+
+    review = analyze(
+        path, extensions={}, target_ref='HEAD~1', head_ref='HEAD')
+
+    assert review is None
+
 
 def test_analyze_bad_yaml(empty_repo):
     path = Path(empty_repo.working_tree_dir)
@@ -98,6 +105,17 @@ def test_analyze_bad_yaml(empty_repo):
         'yaml_parsing': YamlParsingAnalyzer(),
     }
     review = analyze(path, extensions=extensions)
+
+    assert review
+    assert review.recommendation == Recommendation.CRITICAL
+    assert len(review.annotations) == 1
+    assert review.annotations[0].file == str(Path('sub/bad.yaml'))
+
+    empty_repo.index.add(['sub/bad.yaml'])
+    empty_repo.index.commit('Add bad YAML')
+
+    review = analyze(
+        path, extensions=extensions, target_ref='HEAD~1', head_ref='HEAD')
 
     assert review
     assert review.recommendation == Recommendation.CRITICAL
@@ -133,6 +151,17 @@ def test_analyze_bad_yaml_after(empty_repo):
     assert len(review.annotations) == 1
     assert review.annotations[0].file == str(Path('sub/bad.yaml'))
 
+    empty_repo.index.add(['sub/bad.yaml'])
+    empty_repo.index.commit('Add bad YAML')
+
+    review = analyze(
+        path, extensions=extensions, target_ref='HEAD~1', head_ref='HEAD')
+
+    assert review
+    assert review.recommendation == Recommendation.CRITICAL
+    assert len(review.annotations) == 1
+    assert review.annotations[0].file == str(Path('sub/bad.yaml'))
+
 
 def test_analyze_bad_yaml_unrelated(empty_repo):
     path = Path(empty_repo.working_tree_dir)
@@ -158,6 +187,16 @@ def test_analyze_bad_yaml_unrelated(empty_repo):
     }
     with pytest.raises(yaml.error.MarkedYAMLError) as exc_info:
         analyze(path, extensions=extensions)
+
+    assert exc_info.value.problem_mark is not None
+    assert exc_info.value.problem_mark.name == str(Path('sub/bad.yaml'))
+
+    empty_repo.index.add(['sub/bad.yaml'])
+    empty_repo.index.commit('Add unrelated change')
+
+    with pytest.raises(yaml.error.MarkedYAMLError) as exc_info:
+        analyze(
+            path, extensions=extensions, target_ref='HEAD~1', head_ref='HEAD')
 
     assert exc_info.value.problem_mark is not None
     assert exc_info.value.problem_mark.name == str(Path('sub/bad.yaml'))
