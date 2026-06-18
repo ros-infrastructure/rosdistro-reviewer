@@ -154,14 +154,17 @@ def analyze_yaml_error(
         target_ref=target_ref,
         head_ref=head_ref,
         paths=[yaml_path])
-    if not added_lines:
-        return None, None
-
-    for lines in added_lines.get(yaml_path, ()):
+    for lines in (added_lines or {}).get(yaml_path, ()):
         if error_line in lines:
             error_lines = range(error_line, error_line + 1)
             break
         elif error_line - 1 in lines:
+            # It is a common pattern that mistakes in YAML will only manifest
+            # as a syntax error on the following line. If the line wasn't
+            # modified but the line before it was, it is highly likely that
+            # changes on the line before caused the error. Either way, the
+            # line immediately after a change is considered part of the
+            # context of the review and should allow annotation.
             error_lines = range(error_line - 1, error_line + 1)
             break
     else:
