@@ -40,7 +40,7 @@ def _get_changed_yaml(
         with Repo(path) as repo:
             tree = repo.tree(head_ref)
             yaml_files = [
-                str(Path(item.path))
+                str(item.path)
                 for item in tree.traverse(_is_yaml_blob)
                 if isinstance(item, Blob)
             ]
