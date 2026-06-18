@@ -144,8 +144,13 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
             latest_review.state in ('CHANGES_REQUESTED', 'APPROVED') and
             recommendation == Recommendation.NEUTRAL
         ):
-            # A 'COMMENT' review on GitHub doesn't change the approval state
-            # from the previous review, so if we're transitioning from APPROVE
-            # or CHANGES_REQUESTED to COMMENT, we need to explicitly dismiss
-            # the previous review so the state is updated.
-            latest_review.dismiss('Previous automated review is stale')
+            try:
+                # A 'COMMENT' review on GitHub doesn't change the approval
+                # state from the previous review, so if we're transitioning
+                # from APPROVE or CHANGES_REQUESTED to COMMENT, we need to
+                # explicitly dismiss the previous review so the state is
+                # updated.
+                latest_review.dismiss('Previous automated review is stale')
+            except Exception as e:  # noqa: B902
+                raise RuntimeError(
+                    'Failed to dismiss previously posted review') from e
