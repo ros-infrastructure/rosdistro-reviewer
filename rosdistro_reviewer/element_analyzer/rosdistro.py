@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from colcon_core.generic_decorator import GenericDecorator
 from colcon_core.logging import colcon_logger
 from colcon_core.plugin_system import satisfies_version
 from git import Repo
@@ -340,15 +341,17 @@ def _read_index(
             tree = repo.tree(head_ref)
             if 'index-v4.yaml' not in tree:
                 return None
-            index = yaml.load(
-                        tree['index-v4.yaml'].data_stream,
-                        yaml.SafeLoader)
+            stream = GenericDecorator(
+                tree['index-v4.yaml'].data_stream,
+                name='index-v4.yaml')
+            index = yaml.load(stream, yaml.SafeLoader)
     else:
         index_path = path / 'index-v4.yaml'
         if not index_path.is_file():
             return None
         with index_path.open('r') as f:
-            index = yaml.load(f, yaml.SafeLoader)
+            stream = GenericDecorator(f, name='index-v4.yaml')
+            index = yaml.load(stream, yaml.SafeLoader)
     if not index or not index.get('distributions'):
         return None
 

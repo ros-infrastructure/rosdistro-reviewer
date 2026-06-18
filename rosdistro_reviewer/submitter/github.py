@@ -85,6 +85,7 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
         auth = Auth.Token(token) if token else None
 
         RECOMMENDATION_EVENTS = {
+            Recommendation.CRITICAL: 'REQUEST_CHANGES',
             Recommendation.DISAPPROVE: 'REQUEST_CHANGES',
             Recommendation.NEUTRAL: 'COMMENT',
             Recommendation.APPROVE: 'APPROVE',

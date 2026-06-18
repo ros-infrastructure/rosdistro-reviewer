@@ -1,6 +1,7 @@
 # Copyright 2024 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import io
 from pathlib import Path
 from pathlib import PurePosixPath
 from typing import List
@@ -9,6 +10,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
+from colcon_core.generic_decorator import GenericDecorator
 from colcon_core.logging import colcon_logger
 from colcon_core.plugin_system import satisfies_version
 from git import Repo
@@ -40,7 +42,7 @@ def _get_changed_yaml(
         with Repo(path) as repo:
             tree = repo.tree(head_ref)
             yaml_files = [
-                str(item.path)
+                str(Path(item.path))
                 for item in tree.traverse(_is_yaml_blob)
                 if isinstance(item, Blob)
             ]
@@ -63,14 +65,19 @@ def _get_changed_yaml(
     return changes
 
 
-def _get_previous_keys(raw_data: str) -> Mapping[int, int]:
+def _get_previous_keys(
+    raw_data: str,
+    yaml_path: str,
+) -> Mapping[int, int]:
     """
     For each key, determine what key (if any) precedes it in the file.
 
     :param raw_data: The un-parsed YAML text.
+    :param yaml_path: Relative path to the YAML file.
     :returns: Mapping from line number to previous key line number.
     """
-    data = yaml.load(raw_data, Loader=AnnotatedSafeLoader)
+    stream = GenericDecorator(io.StringIO(raw_data), name=str(Path(yaml_path)))
+    data = yaml.load(stream, Loader=AnnotatedSafeLoader)
     previous_keys = {}
 
     def _process_level(maybe_mapping):
@@ -173,7 +180,7 @@ class YamllintAnalyzer(ElementAnalyzerExtensionPoint):
 
                     # lazy-load
                     if previous_keys is None:
-                        previous_keys = _get_previous_keys(data)
+                        previous_keys = _get_previous_keys(data, yaml_path)
 
                     probable_culprit = previous_keys.get(problem.line)
                     if (

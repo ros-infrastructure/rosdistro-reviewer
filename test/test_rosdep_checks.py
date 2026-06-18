@@ -375,6 +375,15 @@ def test_target_ref(rosdep_repo):
     assert criteria and annotations
     assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
 
+    for file_name in rules.keys():
+        file_path = repo_dir / 'rosdep' / file_name
+        rosdep_repo.index.add(str(file_path))
+    rosdep_repo.index.commit('Add check violation')
+
+    criteria, annotations = extension.analyze(repo_dir, head_ref='HEAD')
+    assert criteria and annotations
+    assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
+
 
 def test_removal_only(rosdep_repo):
     repo_dir = Path(rosdep_repo.working_tree_dir)

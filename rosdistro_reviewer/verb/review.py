@@ -9,6 +9,7 @@ from colcon_core.logging import get_effective_console_level
 from colcon_core.plugin_system import satisfies_version
 from colcon_core.verb import VerbExtensionPoint
 from rosdistro_reviewer.element_analyzer import analyze
+from rosdistro_reviewer.review import Recommendation
 from rosdistro_reviewer.submitter import add_review_submitter_arguments
 from rosdistro_reviewer.submitter import submit_review
 
@@ -55,9 +56,14 @@ class ReviewVerb(VerbExtensionPoint):
             root,
             target_ref=context.args.target_ref,
             head_ref=context.args.head_ref)
+
         if review:
             text_root = root if context.args.head_ref is None else None
             print('\n' + review.to_text(root=text_root) + '\n')
 
             submit_review(context.args, review)
+
+            if review.recommendation <= Recommendation.CRITICAL:
+                return 1
+
         return 0

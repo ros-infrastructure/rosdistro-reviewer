@@ -9,6 +9,7 @@ committish
 connectionpool
 corge
 debian
+deduplication
 deserialized
 diffs
 distro
@@ -22,6 +23,7 @@ github
 hexsha
 https
 india
+isatty
 isdigit
 iterdir
 itertools
