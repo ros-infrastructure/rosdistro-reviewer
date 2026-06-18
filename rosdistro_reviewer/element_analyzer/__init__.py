@@ -10,7 +10,9 @@ from typing import Tuple
 from colcon_core.plugin_system import instantiate_extensions
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Criterion
+from rosdistro_reviewer.review import Recommendation
 from rosdistro_reviewer.review import Review
+import yaml
 
 
 class ElementAnalyzerExtensionPoint:
@@ -94,7 +96,16 @@ def analyze(
                 head_ref = repo.commit(head_ref).hexsha
     review = Review(head_ref=head_ref)
     for analyzer_name, extension in extensions.items():
-        criteria, annotations = extension.analyze(path, target_ref, head_ref)
+        try:
+            criteria, annotations = extension.analyze(
+                path, target_ref, head_ref)
+        except yaml.error.MarkedYAMLError as e:
+            criteria, annotations = analyze_yaml_error(
+                e, path, target_ref, head_ref)
+            if not criteria and not annotations:
+                # If we can't represent the error as part of the review, let
+                # the exception bubble up so the error isn't lost.
+                raise
 
         if criteria:
             element = review.elements.setdefault(analyzer_name, [])
@@ -110,3 +121,61 @@ def analyze(
         return None
 
     return review
+
+
+def analyze_yaml_error(
+    exception: yaml.error.MarkedYAMLError,
+    path: Path,
+    target_ref: Optional[str] = None,
+    head_ref: Optional[str] = None,
+) -> Tuple[Optional[List[Criterion]], Optional[List[Annotation]]]:
+    """
+    Analyze a MarkedYAMLError and return review criteria and annotations.
+
+    :param exception: The underlying YAML error
+    :param path: Path on disk to the git repository
+    :param target_ref: The git ref to base the diff from
+    :param head_ref: The git ref where the changes have been made
+    :returns: A tuple with a list of criteria and a list of
+      annotations, or (None, None) if a review can't be generated
+    """
+    if not exception.problem_mark or not exception.problem_mark.name:
+        return None, None
+    yaml_path = exception.problem_mark.name
+    error_line = exception.problem_mark.line + 1
+
+    # We delay this import until after the GitPython
+    # logger has already been configured to avoid DEBUG
+    # messages on the console at import time
+    from rosdistro_reviewer.git_lines import get_added_lines
+
+    added_lines = get_added_lines(
+        path,
+        target_ref=target_ref,
+        head_ref=head_ref,
+        paths=[yaml_path])
+    if not added_lines:
+        return None, None
+
+    for lines in added_lines.get(yaml_path, ()):
+        if error_line in lines:
+            error_lines = range(error_line, error_line + 1)
+            break
+        elif error_line - 1 in lines:
+            error_lines = range(error_line - 1, error_line + 1)
+            break
+    else:
+        return None, None
+
+    reason = 'A YAML syntax error is blocking analysis'
+    criteria = [
+        Criterion(Recommendation.CRITICAL, reason),
+    ]
+    msg = f'YAML parsing error: {exception.problem}'
+    if exception.context:
+        msg += f' ({exception.context})'
+    annotations = [
+        Annotation(yaml_path, error_lines, msg),
+    ]
+
+    return criteria, annotations
