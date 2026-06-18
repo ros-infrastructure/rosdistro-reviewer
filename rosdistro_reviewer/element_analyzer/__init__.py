@@ -97,11 +97,14 @@ def analyze(
         criteria, annotations = extension.analyze(path, target_ref, head_ref)
 
         if criteria:
-            review.elements.setdefault(analyzer_name, [])
-            review.elements[analyzer_name].extend(criteria)
+            element = review.elements.setdefault(analyzer_name, [])
+            for criterion in criteria:
+                if criterion not in element:
+                    element.append(criterion)
 
-        if annotations:
-            review.annotations.extend(annotations)
+        for annotation in annotations or ():
+            if annotation not in review.annotations:
+                review.annotations.append(annotation)
 
     if not review.elements and not review.annotations:
         return None
