@@ -305,6 +305,17 @@ VIOLATIONS = {
             },
         },
     },
+    'L': {
+        # This key starts with python- or python2-
+        'python.yaml': {
+            'python-lima': {
+                'ubuntu': ['python-lima'],
+            },
+            'python2-lima': {
+                'ubuntu': ['python2-lima'],
+            },
+        },
+    },
 }
 
 
