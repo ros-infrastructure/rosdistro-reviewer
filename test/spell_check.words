@@ -17,6 +17,7 @@ distros
 eoan
 filepath
 fixturenames
+followup
 fred
 gentoo
 github
@@ -52,6 +53,7 @@ plugin
 prepend
 pycqa
 pytest
+pytestmark
 rangeify
 representer
 returncode
