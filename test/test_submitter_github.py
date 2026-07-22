@@ -32,6 +32,9 @@ BASE_PAYLOAD_URL = (
 @pytest.fixture
 def mock_responses() -> Iterable[responses.RequestsMock]:
     with responses.RequestsMock(
+        # This is a fixture, so we don't expect all of the defined responses
+        # to be exercised each time. Tests should explicitly verify calls
+        # where appropriate.
         assert_all_requests_are_fired=False,
     ) as mocked_requests:
         mocked_requests.add(
