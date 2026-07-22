@@ -53,6 +53,7 @@ prepend
 pycqa
 pytest
 rangeify
+reftable
 representer
 returncode
 rhel

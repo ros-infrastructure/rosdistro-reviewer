@@ -22,6 +22,12 @@ def _find_repo_root():
     from git import InvalidGitRepositoryError
     try:
         with Repo(Path.cwd(), search_parent_directories=True) as repo:
+            if (Path(repo.git_dir) / 'reftable').is_dir():
+                raise RuntimeError(
+                    'This repository uses the reftable reference storage '
+                    'format, which is currently not supported by GitPython. '
+                    'Please use a repository configured with the traditional '
+                    'files reference storage format.')
             return Path(repo.working_tree_dir)
     except InvalidGitRepositoryError as e:
         raise RuntimeError(

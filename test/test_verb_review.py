@@ -127,3 +127,20 @@ def test_verb_review_return_codes(
         return_value=review,
     ):
         assert expected_exit_code == extension.main(context=context)
+
+
+def test_verb_review_reftable(empty_repo_reftable):
+    extension = ReviewVerb()
+    extension.add_arguments(parser=Mock())
+
+    context = CommandContext(
+        command_name='rosdistro-reviewer',
+        args=Mock())
+
+    with patch(
+        'rosdistro_reviewer.verb.review.Path.cwd',
+        return_value=Path(empty_repo_reftable.working_tree_dir),
+    ):
+        with pytest.raises(RuntimeError) as e:
+            extension.main(context=context)
+        assert 'reftable reference storage format' in str(e.value)
