@@ -55,6 +55,7 @@ pycqa
 pytest
 pytestmark
 rangeify
+reftable
 representer
 returncode
 rglob
