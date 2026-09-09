@@ -13,7 +13,7 @@ def git_repo(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> Repo:
     repo_dir = tmp_path_factory.mktemp('git_repo')
-    repo = Repo.init(repo_dir, ref_format='files')
+    repo = Repo.init(repo_dir)
     request.addfinalizer(repo.close)
 
     repo.index.commit('Initial commit')
