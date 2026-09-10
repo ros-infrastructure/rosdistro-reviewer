@@ -64,13 +64,6 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
                                  'review to')
 
     def submit(self, args, review) -> None:  # noqa: D102
-        from github import Auth
-        from github import Github
-        from github.PullRequest import ReviewComment
-
-        log_level = get_effective_console_level(colcon_logger)
-        logging.getLogger('urllib3.connectionpool').setLevel(log_level)
-
         pull_request = getattr(args, 'github_pull_request', None)
         if pull_request is None:
             return None
@@ -80,6 +73,16 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
             pr_id = int(pr_id_str)
         except ValueError as exc:
             raise ValueError('Invalid pull request reference') from exc
+
+        return self._submit(repo_id, pr_id, review)
+
+    def _submit(self, repo_id, pr_id, review):
+        from github import Auth
+        from github import Github
+        from github.PullRequest import ReviewComment
+
+        log_level = get_effective_console_level(colcon_logger)
+        logging.getLogger('urllib3.connectionpool').setLevel(log_level)
 
         token = os.environ.get(GITHUB_TOKEN_ENVIRONMENT_VARIABLE.name)
         auth = Auth.Token(token) if token else None
