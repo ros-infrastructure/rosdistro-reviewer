@@ -323,23 +323,34 @@ def _check_suitability(criteria, annotations, changed_rosdeps, key_counts):
     recommendation = Recommendation.APPROVE
     problems = set()
 
-    # Pip rules should not be added when there is already a non-pip one
     for file, changes in changed_rosdeps.items():
         for key, rules in changes.items():
             if not getattr(key, '__lines__', None):
                 continue
-            if not key.endswith('-pip'):
-                continue
-            non_pip_key = key[:-4]
-            if key_counts.get(non_pip_key, 0) >= 1:
+
+            # Pip rules should not be added when there is already a non-pip one
+            if key.endswith('-pip'):
+                non_pip_key = key[:-4]
+                if key_counts.get(non_pip_key, 0) >= 1:
+                    recommendation = Recommendation.DISAPPROVE
+                    problems.add(
+                        'Rules exclusively for pip may not be added when '
+                        'there are system packages available')
+                    annotations.append(Annotation(
+                        file,
+                        key.__lines__,
+                        f'There is already a non-pip key for {non_pip_key}'))
+
+            # New keys should not start with python- or python2-
+            if key.startswith(('python-', 'python2-')):
                 recommendation = Recommendation.DISAPPROVE
                 problems.add(
-                    'Rules exclusively for pip may not be added when there '
-                    'are system packages available')
+                    'Rules for Python 2 packages are no longer supported')
                 annotations.append(Annotation(
                     file,
                     key.__lines__,
-                    f'There is already a non-pip key for {non_pip_key}'))
+                    'This key uses a prefix indicating it is for Python 2 '
+                    'packages'))
 
     if problems:
         message = '\n- '.join([
