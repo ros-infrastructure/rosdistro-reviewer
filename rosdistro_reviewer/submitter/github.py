@@ -13,6 +13,7 @@ from colcon_core.logging import get_effective_console_level
 from colcon_core.plugin_system import satisfies_version
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Recommendation
+from rosdistro_reviewer.review import Review
 from rosdistro_reviewer.submitter import ReviewSubmitterExtensionPoint
 
 """Environment variable for the GitHub authentication token"""
@@ -64,13 +65,6 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
                                  'review to')
 
     def submit(self, args, review) -> None:  # noqa: D102
-        from github import Auth
-        from github import Github
-        from github.PullRequest import ReviewComment
-
-        log_level = get_effective_console_level(colcon_logger)
-        logging.getLogger('urllib3.connectionpool').setLevel(log_level)
-
         pull_request = getattr(args, 'github_pull_request', None)
         if pull_request is None:
             return None
@@ -80,6 +74,16 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
             pr_id = int(pr_id_str)
         except ValueError as exc:
             raise ValueError('Invalid pull request reference') from exc
+
+        return self._submit(repo_id, pr_id, review)
+
+    def _submit(self, repo_id: str, pr_id: int, review: Review):
+        from github import Auth
+        from github import Github
+        from github.PullRequest import ReviewComment
+
+        log_level = get_effective_console_level(colcon_logger)
+        logging.getLogger('urllib3.connectionpool').setLevel(log_level)
 
         token = os.environ.get(GITHUB_TOKEN_ENVIRONMENT_VARIABLE.name)
         auth = Auth.Token(token) if token else None
