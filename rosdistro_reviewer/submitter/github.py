@@ -13,6 +13,7 @@ from colcon_core.logging import get_effective_console_level
 from colcon_core.plugin_system import satisfies_version
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Recommendation
+from rosdistro_reviewer.review import Review
 from rosdistro_reviewer.submitter import ReviewSubmitterExtensionPoint
 
 """Environment variable for the GitHub authentication token"""
@@ -76,7 +77,7 @@ class GitHubSubmitter(ReviewSubmitterExtensionPoint):
 
         return self._submit(repo_id, pr_id, review)
 
-    def _submit(self, repo_id, pr_id, review):
+    def _submit(self, repo_id: str, pr_id: int, review: Review):
         from github import Auth
         from github import Github
         from github.PullRequest import ReviewComment
