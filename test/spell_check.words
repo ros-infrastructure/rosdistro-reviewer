@@ -2,6 +2,7 @@ addfinalizer
 apache
 archlinux
 autouse
+backend
 bubblify
 buildfarm
 colcon
@@ -17,6 +18,7 @@ distros
 eoan
 filepath
 fixturenames
+followup
 fred
 gentoo
 github
@@ -53,9 +55,12 @@ plugin
 prepend
 pycqa
 pytest
+pytestmark
 rangeify
+reftable
 representer
 returncode
+rglob
 rhel
 rosdep
 rosdeps
