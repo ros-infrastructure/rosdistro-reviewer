@@ -135,7 +135,7 @@ def _check_key_names(criteria, annotations, changed_rosdeps, key_counts):
     recommendation = Recommendation.APPROVE
     problems = set()
 
-    # Pip-only rules should end in -pip
+    # Keys with only pip rules should end in -pip, and others should not
     for file, changes in changed_rosdeps.items():
         if Path(file).name != 'python.yaml':
             continue
@@ -144,15 +144,30 @@ def _check_key_names(criteria, annotations, changed_rosdeps, key_counts):
                 continue
 
             pip_only = _is_pip_only(v)
-            if pip_only is not None and pip_only != k.endswith('-pip'):
+            if pip_only and not k.endswith('-pip'):
                 recommendation = Recommendation.DISAPPROVE
                 problems.add(
                     "Keys which contain only pip rules should end in '-pip'")
                 annotations.append(Annotation(
                     file,
                     k.__lines__,
-                    f"This key should{'' if pip_only else ' not'} "
-                    "end in '-pip'"))
+                    "This key should end in '-pip' because it only contains "
+                    'pip rules'))
+            elif pip_only is False and k.endswith('-pip'):
+                non_pip_platforms = [
+                    os for os, rule in v.items()
+                    if not all(_get_pip_usage(rule))
+                ]
+                platforms = ', '.join(f"'{os}'" for os in non_pip_platforms)
+                recommendation = Recommendation.DISAPPROVE
+                problems.add(
+                    'Keys which contain non-pip rules should not end in '
+                    "'-pip'")
+                annotations.append(Annotation(
+                    file,
+                    k.__lines__,
+                    "This key should not end in '-pip' because it contains "
+                    f'non-pip rules for {platforms}'))
 
     # Python keys should go in python.yaml
     for file, changes in changed_rosdeps.items():
