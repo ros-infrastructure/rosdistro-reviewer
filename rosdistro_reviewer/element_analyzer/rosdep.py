@@ -6,6 +6,7 @@ from pathlib import PurePosixPath
 import re
 from typing import Any
 from typing import Dict
+from typing import Iterator
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -79,6 +80,49 @@ def _no_suffixes(packages):
             yield package
 
 
+def _get_pip_usage(rule: Any) -> Iterator[bool]:
+    """
+    Determine which parts of a rosdep rule for an OS use the pip installer.
+
+    Rules for specific OS versions (or '*') are inspected individually, and
+    rules which are null (i.e., not available) are skipped.
+
+    :param rule: The rosdep rule for a single OS
+    :returns: For each part of the rule, True if it uses the pip installer,
+      or False if it uses any other installer
+    """
+    if isinstance(rule, dict):
+        for key, sub_rule in rule.items():
+            if key == 'pip':
+                yield True
+            elif isinstance(sub_rule, dict) and 'packages' not in sub_rule:
+                # The key is an OS version (or '*')
+                yield from _get_pip_usage(sub_rule)
+            elif sub_rule is not None:
+                yield False
+    elif rule is not None:
+        # The rule is a list of packages for the default installer
+        yield False
+
+
+def _is_pip_only(rules: Any) -> Optional[bool]:
+    """
+    Determine if the rosdep rules for a key only use the pip installer.
+
+    :param rules: The rosdep rules for each OS
+    :returns: True if all of the rules use the pip installer, False if any of
+      them use a different installer, or None if none of them are available
+    """
+    if not isinstance(rules, dict):
+        return None
+    pip_usage = [
+        uses_pip
+        for rule in rules.values()
+        for uses_pip in _get_pip_usage(rule)
+    ]
+    return all(pip_usage) if pip_usage else None
+
+
 def _check_key_names(criteria, annotations, changed_rosdeps, key_counts):
     # Bypass check if no new keys were added
     if not any(
@@ -99,10 +143,8 @@ def _check_key_names(criteria, annotations, changed_rosdeps, key_counts):
             if not getattr(k, '__lines__', None):
                 continue
 
-            pip_only = all(
-                isinstance(rule, dict) and set(rule.keys()) == {'pip'}
-                for rule in v.values())
-            if pip_only != k.endswith('-pip'):
+            pip_only = _is_pip_only(v)
+            if pip_only is not None and pip_only != k.endswith('-pip'):
                 recommendation = Recommendation.DISAPPROVE
                 problems.add(
                     "Keys which contain only pip rules should end in '-pip'")
@@ -364,15 +406,11 @@ def _check_suitability(criteria, annotations, changed_rosdeps, key_counts):
 
 def _check_pip_disclaimer(criteria, annotations, changed_rosdeps):
     if any(
-        isinstance(rules, dict) and
-        all(
-            isinstance(rule, dict) and set(rule.keys()) == {'pip'}
-            for rule in rules.values()
-        ) and
+        _is_pip_only(rules) and
         any(
             any(
                 getattr(obj, '__lines__', None)
-                for obj in (key, os, rule, rule['pip'])
+                for obj in (key, os, rule)
             )
             for os, rule in rules.items()
         )
