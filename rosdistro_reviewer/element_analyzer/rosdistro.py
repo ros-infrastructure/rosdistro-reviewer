@@ -1,13 +1,16 @@
 # Copyright 2026 Open Source Robotics Foundation, Inc.
 # Licensed under the Apache License, Version 2.0
 
+import copy
+from functools import lru_cache
 import itertools
 import json
 import os
 from pathlib import Path
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
+from colcon_core.environment_variable import EnvironmentVariable
 from colcon_core.generic_decorator import GenericDecorator
 from colcon_core.logging import colcon_logger
 from colcon_core.plugin_system import satisfies_version
@@ -19,6 +22,11 @@ from rosdistro_reviewer.review import Recommendation
 from rosdistro_reviewer.yaml_changes import get_changed_yaml
 from rosdistro_reviewer.yaml_changes import prune_changed_yaml
 import yaml
+
+"""Environment variable for the GitHub Actions event file path"""
+GITHUB_EVENT_PATH_ENVIRONMENT_VARIABLE = EnvironmentVariable(
+    'GITHUB_EVENT_PATH',
+    'Path to the GitHub Actions event file containing event payload JSON')
 
 logger = colcon_logger.getChild(__name__)
 
@@ -235,7 +243,7 @@ def _check_bloom_version(criteria, annotations, index):
     ):
         return
 
-    event_path = os.environ.get('GITHUB_EVENT_PATH')
+    event_path = os.environ.get(GITHUB_EVENT_PATH_ENVIRONMENT_VARIABLE.name)
     if not event_path or not Path(event_path).is_file():
         return
 
@@ -330,6 +338,209 @@ def _check_multiple_releases(criteria, annotations, index):
     criteria.append(Criterion(recommendation, message))
 
 
+def _parse_github_repo_slug(url: str) -> Optional[str]:
+    if not url or not isinstance(url, str):
+        return None
+    clean_url = url.strip().rstrip('/')
+    if clean_url.endswith('.git'):
+        clean_url = clean_url[:-4]
+    match = re.search(
+        r'(?:^|[/@:])github\.com[:/]([a-zA-Z0-9_-]+)/([a-zA-Z0-9_.-]+)$',
+        clean_url,
+        re.I,
+    )
+    if not match:
+        return None
+    owner, repo = match.groups()
+    return f'{owner}/{repo}'
+
+
+@lru_cache()
+def _check_github_user_permission(
+    submitting_user: str,
+    repo_slug: str,
+) -> Optional[str]:
+    token = os.environ.get('GITHUB_TOKEN')
+    try:
+        from github import Auth
+        from github import Github
+    except ImportError:
+        logger.warning('PyGithub is not installed')
+        return None
+
+    try:
+        gh = Github(auth=Auth.Token(token)) if token else Github()
+        repo = gh.get_repo(repo_slug)
+        perm = repo.get_collaborator_permission(submitting_user)
+        return perm.lower() if perm else None
+    except Exception as e:  # noqa: B902
+        logger.debug(
+            f"Failed to check GitHub permissions for '{submitting_user}' "
+            f"on '{repo_slug}': {e}")
+        return None
+
+
+def _get_pr_submitter_info() -> Optional[Tuple[str, bool]]:
+    event_path = os.environ.get(GITHUB_EVENT_PATH_ENVIRONMENT_VARIABLE.name)
+    if not event_path or not Path(event_path).is_file():
+        return None
+
+    try:
+        with open(event_path, 'r', encoding='utf-8') as f:
+            event_data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+    pull_request = event_data.get('pull_request') or {}
+    submitting_user = (pull_request.get('user') or {}).get('login')
+    if not submitting_user:
+        sender = event_data.get('sender') or {}
+        submitting_user = sender.get('login')
+
+    if not submitting_user:
+        return None
+
+    repo_data = (
+        event_data.get('repository') or
+        (pull_request.get('base') or {}).get('repo') or
+        {}
+    )
+    repo_url = repo_data.get('html_url') or ''
+    if not _parse_github_repo_slug(repo_url):
+        return None
+
+    author_association = pull_request.get('author_association')
+    is_distro_maintainer = author_association in (
+        'MEMBER', 'OWNER', 'COLLABORATOR',
+    )
+    return submitting_user, is_distro_maintainer
+
+
+def _check_repo_release_authorization(
+    repo_name: str,
+    repo: Dict[str, Any],
+    full_repo: Dict[str, Any],
+    submitting_user: str,
+) -> Tuple[Optional[str], Optional[str], Any]:
+    lines = (
+        getattr(repo.get('release'), '__lines__', None) or
+        getattr(repo_name, '__lines__', None) or
+        getattr(repo, '__lines__', None)
+    )
+
+    release = (
+        full_repo.get('release') if isinstance(full_repo, dict) else None
+    )
+    url = release.get('url') if isinstance(release, dict) else None
+
+    if getattr(url, '__lines__', None) is not None:
+        msg = (
+            f"Authorization for repository '{repo_name}' could not be "
+            'automatically verified (repository URL was added or modified)'
+        )
+        return None, msg, getattr(url, '__lines__', None) or lines
+
+    slug = _parse_github_repo_slug(url) if isinstance(url, str) else None
+    if not slug:
+        msg = (
+            f"Authorization for repository '{repo_name}' could not be "
+            'automatically verified (target repository is not hosted on '
+            'GitHub)'
+        )
+        return None, msg, lines
+
+    perm = _check_github_user_permission(submitting_user, slug)
+    if perm is None:
+        msg = (
+            f"Authorization for repository '{repo_name}' could not be "
+            'automatically verified (failed to query GitHub permissions for '
+            f"'{slug}')"
+        )
+        return None, msg, lines
+
+    if perm not in ('admin', 'write', 'maintain'):
+        problem = (
+            f"User '{submitting_user}' is not authorized to modify "
+            f"repository '{repo_name}'"
+        )
+        return problem, None, lines
+
+    return None, None, None
+
+
+def _check_maintainer_authorization(
+    criteria: List[Criterion],
+    annotations: List[Annotation],
+    index: Dict[str, Any],
+    full_index: Dict[str, Any],
+) -> None:
+    submitter_info = _get_pr_submitter_info()
+    if not submitter_info:
+        return
+
+    submitting_user, is_distro_maintainer = submitter_info
+
+    changed_repos = [
+        (distro_file, repo_name, repo,
+         (((full_index or {}).get(distro_name) or {}).get(
+             distro_file) or {}).get(repo_name, repo))
+        for distro_name, distro in (index or {}).items()
+        for distro_file, repos in (distro or {}).items()
+        for repo_name, repo in (repos or {}).items()
+        if isinstance(repo.get('release'), dict)
+    ]
+    if not changed_repos:
+        return
+
+    if is_distro_maintainer:
+        criteria.append(Criterion(
+            Recommendation.APPROVE,
+            'Maintainer authorization check passed for changed repositories'))
+        return
+
+    problems: Set[str] = set()
+    unverified: Set[str] = set()
+
+    for distro_file, repo_name, repo, full_repo in changed_repos:
+        problem, unverified_msg, lines = _check_repo_release_authorization(
+            repo_name, repo, full_repo, submitting_user)
+        if problem:
+            problems.add(problem)
+            if lines:
+                annotations.append(Annotation(
+                    distro_file, lines,
+                    f"User '@{submitting_user}' is not authorized to make "
+                    f"changes to repository '{repo_name}'"))
+        elif unverified_msg:
+            unverified.add(unverified_msg)
+            if lines:
+                annotations.append(
+                    Annotation(distro_file, lines, unverified_msg))
+
+    if problems:
+        recommendation = Recommendation.DISAPPROVE
+        messages = sorted(problems)
+        if unverified:
+            messages.extend(sorted(unverified))
+        message = '\n- '.join([
+            'There are problems with maintainer authorization for '
+            'changed repositories:',
+        ] + messages)
+    elif unverified:
+        recommendation = Recommendation.NEUTRAL
+        message = '\n- '.join([
+            'Maintainer authorization could not be fully verified for '
+            'changed repositories:',
+        ] + sorted(unverified))
+    else:
+        recommendation = Recommendation.APPROVE
+        message = (
+            'Maintainer authorization check passed for changed repositories'
+        )
+
+    criteria.append(Criterion(recommendation, message))
+
+
 def _read_index(
     path: Path,
     target_ref: Optional[str] = None,
@@ -414,8 +625,8 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
         annotations: List[Annotation] = []
 
         # Read the full rosdistro index
-        index = _read_index(path, target_ref, head_ref)
-        if not index:
+        full_index = _read_index(path, target_ref, head_ref)
+        if not full_index:
             # Bypass check if no distros were changed
             return None, None
 
@@ -423,7 +634,7 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
         # This can be used by checks to correlate changes across distributions
         # and repositories.
         entities: Dict[str, Dict[str, List[str]]] = {}
-        for distro_name, distro in index.items():
+        for distro_name, distro in full_index.items():
             distro_entities = entities.setdefault(distro_name, {})
             for repos in (distro or {}).values():
                 for repo_name, repo in (repos or {}).items():
@@ -436,6 +647,7 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
                             repo_name)
 
         # Prune the index down to only changed elements
+        index = copy.deepcopy(full_index)
         _prune_index(index)
         if not index:
             # Bypass check if no distros were changed
@@ -448,5 +660,7 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
         _check_gbp_org(criteria, annotations, index)
         _check_bloom_version(criteria, annotations, index)
         _check_multiple_releases(criteria, annotations, index)
+        _check_maintainer_authorization(
+            criteria, annotations, index, full_index)
 
         return criteria, annotations

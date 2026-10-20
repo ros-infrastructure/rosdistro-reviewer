@@ -5,11 +5,13 @@ import itertools
 import json
 import os
 from pathlib import Path
+import re
 from typing import Iterable
 from unittest.mock import patch
 
 from git import Repo
 import pytest
+import responses
 from rosdistro_reviewer.element_analyzer.rosdistro import RosdistroAnalyzer
 from rosdistro_reviewer.review import Recommendation
 import yaml
@@ -43,6 +45,90 @@ def _write_distributions(distros, repo_dir):
         yaml.dump(_generate_index(distros.keys()), f)
 
     return index_path
+
+
+@pytest.fixture
+def mock_github_event(tmp_path_factory):
+    event_dir = tmp_path_factory.mktemp('github_event')
+    event_path = event_dir / 'event.json'
+    event_data = {
+        'pull_request': {
+            'user': {
+                'login': 'some-user',
+            },
+            'author_association': 'MEMBER',
+            'base': {
+                'repo': {
+                    'html_url': 'https://github.com/ros/rosdistro',
+                    'full_name': 'ros/rosdistro',
+                },
+            },
+        },
+    }
+    with event_path.open('w') as f:
+        json.dump(event_data, f)
+    with patch.dict(os.environ, {'GITHUB_EVENT_PATH': str(event_path)}):
+        yield event_path
+
+
+@pytest.fixture
+def mock_github_non_member_event(tmp_path_factory):
+    event_dir = tmp_path_factory.mktemp('github_non_member_event')
+    event_path = event_dir / 'event.json'
+    event_data = {
+        'pull_request': {
+            'user': {
+                'login': 'some-user',
+            },
+            'author_association': 'NONE',
+            'base': {
+                'repo': {
+                    'html_url': 'https://github.com/ros/rosdistro',
+                    'full_name': 'ros/rosdistro',
+                },
+            },
+        },
+    }
+    with event_path.open('w') as f:
+        json.dump(event_data, f)
+    with patch.dict(os.environ, {'GITHUB_EVENT_PATH': str(event_path)}):
+        yield event_path
+
+
+@pytest.fixture(autouse=True)
+def mock_github_collaborator_permission_api():
+    def _repo_callback(request):
+        return (200, {}, json.dumps({
+            'name': 'repo',
+            'url': request.url.replace(':443', ''),
+        }))
+
+    def _permission_callback(request):
+        if 'existing_golf' in request.url:
+            return (200, {}, json.dumps({'permission': 'read'}))
+        if 'existing_hotel' in request.url:
+            return (500, {}, json.dumps({'message': 'Internal Server Error'}))
+        return (200, {}, json.dumps({'permission': 'admin'}))
+
+    with responses.RequestsMock(
+        assert_all_requests_are_fired=False
+    ) as mock_responses:
+        mock_responses.add_callback(
+            responses.GET,
+            re.compile(
+                r'https://api\.github\.com(:443)?/repos/[^/]+/[^/]+$'),
+            callback=_repo_callback,
+            content_type='application/json',
+        )
+        mock_responses.add_callback(
+            responses.GET,
+            re.compile(
+                r'https://api\.github\.com(:443)?/repos/[^/]+/[^/]+'
+                r'/collaborators/[^/]+/permission'),
+            callback=_permission_callback,
+            content_type='application/json',
+        )
+        yield mock_responses
 
 
 @pytest.fixture
@@ -103,8 +189,7 @@ def _merge_distributions(first, second):
                 result.append(v)
         return result
     else:
-        assert first == second
-        return first
+        return second
 
 
 def _merge_all_distros(distros_list):
@@ -135,11 +220,36 @@ EXISTING_DISTROS = {
         },
     },
     'jazzy': {
+        'existing_golf': {
+            'release': {
+                'url':
+                    'https://github.com/ros2-gbp/existing_golf-release.git',
+                'version': '1.0.0-1',
+            },
+        },
         'existing_jazzy': {
+            'release': {
+                'url':
+                    'https://github.com/ros2-gbp/existing_jazzy-release.git',
+                'version': '1.0.0-1',
+            },
             'source': {
                 'type': 'git',
                 'url': 'https://example.com/existing_jazzy.git',
                 'version': 'main',
+            },
+        },
+        'non_github_release': {
+            'release': {
+                'url': 'https://example.com/non_github_release.git',
+                'version': '1.0.0-1',
+            },
+        },
+        'existing_hotel': {
+            'release': {
+                'url':
+                    'https://github.com/ros2-gbp/existing_hotel-release.git',
+                'version': '1.0.0-1',
             },
         },
     },
@@ -176,10 +286,47 @@ CONTROL_DISTROS = {
 }
 
 
+# This is a list of circumstances which require further review.
+SENSITIVE = {
+    '*': CONTROL_DISTROS,
+    'A': {
+        # This release stanza is not hosted on GitHub
+        'jazzy': {
+            'non_github_release': {
+                'release': {
+                    'version': '1.0.0-2',
+                },
+            },
+        },
+    },
+    'B': {
+        # This release URL was modified
+        'jazzy': {
+            'existing_jazzy': {
+                'release': {
+                    'url':
+                        'https://github.com/other/modified_jazzy-release.git',
+                },
+            },
+        },
+    },
+    'C': {
+        # Collaborator permissions could not be queried
+        'jazzy': {
+            'existing_hotel': {
+                'release': {
+                    'version': '1.0.0-2',
+                },
+            },
+        },
+    },
+}
+
+
 # This is a list of violations to check for.
 # To avoid collisions, each check should use unique repo names.
 VIOLATIONS = {
-    '*': CONTROL_DISTROS,
+    '*': _merge_all_distros(SENSITIVE.values()),
     'A': {
         # This repo has packages with a naming collision
         'rolling': {
@@ -256,23 +403,43 @@ VIOLATIONS = {
             },
         },
     },
+    'G': {
+        # The submitting user is not authorized to modify this repository
+        'jazzy': {
+            'existing_golf': {
+                'release': {
+                    'version': '1.0.0-2',
+                },
+            },
+        },
+    },
 }
 
 
 def pytest_generate_tests(metafunc):
-    if 'violation_distros' not in metafunc.fixturenames:
-        return
-    combinations = {
-        ''.join(key_set): _merge_all_distros(map(VIOLATIONS.get, key_set))
-        for key_set in _all_combinations(sorted(VIOLATIONS.keys()))
-        if key_set != ('*',)
-    }
-    metafunc.parametrize(
-        'violation_distros',
-        combinations.values(),
-        ids=combinations.keys())
+    if 'violation_distros' in metafunc.fixturenames:
+        combinations = {
+            ''.join(key_set): _merge_all_distros(map(VIOLATIONS.get, key_set))
+            for key_set in _all_combinations(sorted(VIOLATIONS.keys()))
+            if key_set != ('*',)
+        }
+        metafunc.parametrize(
+            'violation_distros',
+            combinations.values(),
+            ids=combinations.keys())
+    if 'sensitive_distros' in metafunc.fixturenames:
+        combinations = {
+            ''.join(key_set): _merge_all_distros(map(SENSITIVE.get, key_set))
+            for key_set in _all_combinations(sorted(SENSITIVE.keys()))
+            if key_set != ('*',)
+        }
+        metafunc.parametrize(
+            'sensitive_distros',
+            combinations.values(),
+            ids=combinations.keys())
 
 
+@pytest.mark.usefixtures('mock_github_event')
 def test_control(rosdistro_index_repo):
     repo_dir = Path(rosdistro_index_repo.working_tree_dir)
     extension = RosdistroAnalyzer()
@@ -330,6 +497,20 @@ def test_removal_only(rosdistro_index_repo):
     assert (None, None) == extension.analyze(repo_dir)
 
 
+@pytest.mark.usefixtures('mock_github_non_member_event')
+def test_sensitive(rosdistro_index_repo, sensitive_distros):
+    repo_dir = Path(rosdistro_index_repo.working_tree_dir)
+    extension = RosdistroAnalyzer()
+
+    distros = _merge_distributions(EXISTING_DISTROS, sensitive_distros)
+    _write_distributions(distros, repo_dir)
+
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria and annotations
+    assert any(Recommendation.APPROVE > c.recommendation for c in criteria)
+
+
+@pytest.mark.usefixtures('mock_github_non_member_event')
 def test_violation(rosdistro_index_repo, violation_distros):
     repo_dir = Path(rosdistro_index_repo.working_tree_dir)
     extension = RosdistroAnalyzer()
