@@ -11,6 +11,7 @@ connectionpool
 corge
 debian
 deduplication
+deepcopy
 deserialized
 diffs
 distro
@@ -20,6 +21,7 @@ filepath
 fixturenames
 followup
 fred
+functools
 gentoo
 github
 hexsha
@@ -78,6 +80,7 @@ ubuntu
 unidiff
 unittest
 urllib
+usefixtures
 utopic
 waldo
 whisky
