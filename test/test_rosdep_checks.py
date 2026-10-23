@@ -156,6 +156,7 @@ CONTROL_RULES = {
             'fedora': ['python3-control-charlie'],
             'ubuntu': None,
         },
+        'python3-none-key': None,
     },
 }
 
@@ -171,6 +172,30 @@ SENSITIVE = {
                     'pip': {
                         'packages': ['python3-control-kilo'],
                     },
+                },
+            },
+        },
+    },
+    'B': {
+        # This is a pip-only rule with OS version-specific and null rules
+        'python.yaml': {
+            'python3-control-oscar-pip': {
+                'debian': {
+                    '*': None,
+                    'bookworm': {
+                        'pip': {
+                            'packages': ['python3-control-oscar'],
+                        },
+                    },
+                },
+                'gentoo': None,
+                'ubuntu': {
+                    '*': {
+                        'pip': {
+                            'packages': ['python3-control-oscar'],
+                        },
+                    },
+                    'jammy': None,
                 },
             },
         },
@@ -316,6 +341,35 @@ VIOLATIONS = {
             },
         },
     },
+    'M': {
+        # This key should end in -pip (with OS version-specific rules)
+        'python.yaml': {
+            'python3-mike': {
+                'ubuntu': {
+                    'noble': {
+                        'pip': {
+                            'packages': ['mike'],
+                        },
+                    },
+                },
+            },
+        },
+    },
+    'N': {
+        # This key should not end in -pip (with OS version-specific rules)
+        'python.yaml': {
+            'python3-november-pip': {
+                'ubuntu': {
+                    '*': {
+                        'pip': {
+                            'packages': ['november'],
+                        },
+                    },
+                    'noble': ['python3-november'],
+                },
+            },
+        },
+    },
 }
 
 
@@ -417,7 +471,7 @@ def test_sensitive(rosdep_repo, sensitive_rules):
             yaml.dump(data, f)
 
     criteria, annotations = extension.analyze(repo_dir)
-    assert criteria
+    assert criteria and not annotations
     assert any(Recommendation.APPROVE > c.recommendation for c in criteria)
 
 

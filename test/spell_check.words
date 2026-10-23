@@ -49,8 +49,10 @@ mypy
 namedtuple
 noop
 noqa
+november
 openrobotics
 opensource
+oscar
 patchset
 pathlib
 plugin
