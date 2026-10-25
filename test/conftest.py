@@ -3,6 +3,7 @@
 
 import os
 from typing import Iterable
+from unittest.mock import patch
 
 from git import Repo
 import pytest
@@ -16,6 +17,13 @@ os.environ['GIT_CONFIG_PARAMETERS'] = (
     os.environ.get('GIT_CONFIG_PARAMETERS', '') +
     " 'init.defaultRefFormat=files'"
 ).strip()
+
+
+@pytest.fixture(autouse=True)
+def isolate_github_event_path() -> Iterable[None]:
+    with patch.dict(os.environ):
+        os.environ.pop('GITHUB_EVENT_PATH', None)
+        yield
 
 
 @pytest.fixture
