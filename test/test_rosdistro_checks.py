@@ -655,3 +655,63 @@ def test_rosdistro_syntax_error_in_git_ref(
     assert e.value.problem_mark is not None
     assert e.value.problem_mark.name == 'index-v4.yaml'
     assert e.value.problem_mark.line == 1
+
+
+def _write_with_header(repo_dir, header, version):
+    file_path = repo_dir / 'humble' / 'distribution.yaml'
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_text(
+        header + 'repositories:\n  foo:\n    release:\n'
+        f'      url: https://github.com/ros2-gbp/foo-release.git\n'
+        f'      version: {version}\n')
+    index_path = repo_dir / 'index-v4.yaml'
+    index_path.write_text(yaml.dump(_generate_index(['humble'])))
+    return file_path, index_path
+
+
+@pytest.mark.usefixtures('mock_github_event')
+@pytest.mark.parametrize('with_release_change', (False, True))
+def test_distribution_header_modified(empty_repo, with_release_change):
+    repo_dir = Path(empty_repo.working_tree_dir)
+    extension = RosdistroAnalyzer()
+
+    old_header = (
+        '%YAML 1.1\n# see REP 143: https://reps.openrobotics.org/rep-0143/\n'
+        '---\n')
+    new_header = (
+        '%YAML 1.1\n# see REP 143: http://ros.org/reps/rep-0143.html\n'
+        '---\n')
+
+    file_path, index_path = _write_with_header(repo_dir, old_header, '1.0.0-1')
+    empty_repo.index.add([str(file_path), str(index_path)])
+    empty_repo.index.commit('Add distribution')
+
+    _write_with_header(
+        repo_dir, new_header, '1.0.1-1' if with_release_change else '1.0.0-1')
+
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria
+    assert any(
+        Recommendation.DISAPPROVE == c.recommendation and
+        'headers' in c.rationale for c in criteria)
+    assert any(
+        Path(a.file) == Path('humble/distribution.yaml') and
+        a.lines == range(2, 3)
+        for a in annotations)
+
+
+@pytest.mark.usefixtures('mock_github_event')
+def test_distribution_header_unmodified(empty_repo):
+    repo_dir = Path(empty_repo.working_tree_dir)
+    extension = RosdistroAnalyzer()
+
+    header = '%YAML 1.1\n# ROS distribution file\n---\n'
+    file_path, index_path = _write_with_header(repo_dir, header, '1.0.0-1')
+    empty_repo.index.add([str(file_path), str(index_path)])
+    empty_repo.index.commit('Add distribution')
+
+    _write_with_header(repo_dir, header, '1.0.1-1')
+
+    criteria, _ = extension.analyze(repo_dir)
+    assert criteria
+    assert not any('headers' in c.rationale for c in criteria)
