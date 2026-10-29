@@ -208,7 +208,7 @@ SENSITIVE = {
 VIOLATIONS = {
     '*': _merge_all_rules(SENSITIVE.values()),
     'A': {
-        # This key should end in -pip
+        # This key should end in '-pip' because it only contains pip rules
         'python.yaml': {
             'python3-alpha': {
                 '*': {
@@ -220,7 +220,8 @@ VIOLATIONS = {
         },
     },
     'B': {
-        # This key should not end in -pip
+        # This key should not end in '-pip' because it contains non-pip rules
+        # for 'fedora'
         'python.yaml': {
             'python3-bravo-pip': {
                 'fedora': ['python3-bravo'],
@@ -342,7 +343,7 @@ VIOLATIONS = {
         },
     },
     'M': {
-        # This key should end in -pip (with OS version-specific rules)
+        # This key should end in '-pip' because it only contains pip rules
         'python.yaml': {
             'python3-mike': {
                 'ubuntu': {
@@ -356,7 +357,8 @@ VIOLATIONS = {
         },
     },
     'N': {
-        # This key should not end in -pip (with OS version-specific rules)
+        # This key should not end in '-pip' because it contains non-pip rules
+        # for 'ubuntu'
         'python.yaml': {
             'python3-november-pip': {
                 'ubuntu': {
