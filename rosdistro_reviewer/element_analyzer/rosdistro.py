@@ -16,6 +16,7 @@ from colcon_core.logging import colcon_logger
 from colcon_core.plugin_system import satisfies_version
 from git import Repo
 from rosdistro_reviewer.element_analyzer import ElementAnalyzerExtensionPoint
+from rosdistro_reviewer.git_lines import get_added_lines
 from rosdistro_reviewer.review import Annotation
 from rosdistro_reviewer.review import Criterion
 from rosdistro_reviewer.review import Recommendation
@@ -547,6 +548,39 @@ def _check_maintainer_authorization(
     criteria.append(Criterion(recommendation, message))
 
 
+def _check_distribution_header(
+    criteria, annotations, path, dist_files, target_ref, head_ref,
+):
+    added = get_added_lines(
+        path, target_ref=target_ref, head_ref=head_ref,
+        paths=sorted(set(dist_files))) or {}
+
+    found = False
+    for dist_file, ranges in added.items():
+        if head_ref is not None:
+            with Repo(path) as repo:
+                data = repo.tree(head_ref)[
+                    Path(dist_file).as_posix()].data_stream.read().decode()
+        else:
+            data = (path / dist_file).read_text()
+        # The header is everything above the 'repositories' key
+        header_end = 1 + next(
+            (i for i, line in enumerate(data.splitlines())
+             if line.startswith('repositories:')), 0)
+        for lines in ranges:
+            if lines.start < header_end:
+                found = True
+                annotations.append(Annotation(
+                    dist_file, range(lines.start, min(lines.stop, header_end)),
+                    'The header of a distribution file should not be '
+                    'modified as part of a release'))
+
+    if found:
+        criteria.append(Criterion(
+            Recommendation.DISAPPROVE,
+            'Distribution file headers must not be modified'))
+
+
 def _read_index(
     path: Path,
     target_ref: Optional[str] = None,
@@ -652,12 +686,20 @@ class RosdistroAnalyzer(ElementAnalyzerExtensionPoint):
                         distro_entities.setdefault(package, []).append(
                             repo_name)
 
+        # Headers are not part of the parsed repositories, check them directly
+        _check_distribution_header(
+            criteria, annotations, path,
+            (dist_file
+             for distro in full_index.values()
+             for dist_file in (distro or {})),
+            target_ref, head_ref)
+
         # Prune the index down to only changed elements
         index = copy.deepcopy(full_index)
         _prune_index(index)
         if not index:
             # Bypass check if no distros were changed
-            return None, None
+            return (criteria, annotations) if criteria else (None, None)
 
         logger.info('Performing analysis on ROS distribution changes...')
 
