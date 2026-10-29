@@ -328,7 +328,12 @@ def _check_multiple_releases(criteria, annotations, index):
         message = 'Changes to release stanzas across multiple distributions ' \
             'are not permitted'
         annotations.extend(
-            Annotation(distro_file, release.__lines__, message)
+            Annotation(
+                distro_file,
+                getattr(release.get('version'), '__lines__', None) or
+                getattr(release.get('url'), '__lines__', None) or
+                release.__lines__,
+                message)
             for _, distro_file, release in releases
         )
     else:
@@ -423,6 +428,7 @@ def _check_repo_release_authorization(
     submitting_user: str,
 ) -> Tuple[Optional[str], Optional[str], Any]:
     lines = (
+        getattr(repo.get('release', {}).get('version'), '__lines__', None) or
         getattr(repo.get('release'), '__lines__', None) or
         getattr(repo_name, '__lines__', None) or
         getattr(repo, '__lines__', None)

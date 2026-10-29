@@ -13,7 +13,9 @@ from git import Repo
 import pytest
 import responses
 from rosdistro_reviewer.element_analyzer.rosdistro import RosdistroAnalyzer
+from rosdistro_reviewer.git_lines import get_added_lines
 from rosdistro_reviewer.review import Recommendation
+from rosdistro_reviewer.yaml_changes import get_changed_yaml
 import yaml
 
 
@@ -521,6 +523,21 @@ def test_violation(rosdistro_index_repo, violation_distros):
     criteria, annotations = extension.analyze(repo_dir)
     assert criteria and annotations
     assert any(Recommendation.APPROVE != c.recommendation for c in criteria)
+
+    # Verify that all annotation lines were actually changed
+    distro_files = [
+        str(Path(distro_name) / 'distribution.yaml')
+        for distro_name in distros.keys()
+    ]
+    changed_yaml = get_changed_yaml(repo_dir, distro_files)
+    added_lines = get_added_lines(repo_dir) if changed_yaml else None
+    for annotation in annotations:
+        file_added = (added_lines or {}).get(annotation.file, ())
+        assert file_added, f'No changed lines found for {annotation.file}'
+        assert all(
+            any(line in r for r in file_added)
+            for line in annotation.lines
+        ), f'Annotation {annotation} references lines not in changed lines'
 
 
 # This particular violation needs a lot more context to validate
