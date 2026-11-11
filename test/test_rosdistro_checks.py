@@ -312,16 +312,6 @@ SENSITIVE = {
             },
         },
     },
-    'C': {
-        # Collaborator permissions could not be queried
-        'jazzy': {
-            'existing_hotel': {
-                'release': {
-                    'version': '1.0.0-2',
-                },
-            },
-        },
-    },
 }
 
 
@@ -538,6 +528,57 @@ def test_violation(rosdistro_index_repo, violation_distros):
             any(line in r for r in file_added)
             for line in annotation.lines
         ), f'Annotation {annotation} references lines not in changed lines'
+
+
+# TODO(#107): update this test once permissions for auth check are fixed
+@pytest.mark.usefixtures('mock_github_non_member_event')
+def test_authorization_query_failure(rosdistro_index_repo):
+    repo_dir = Path(rosdistro_index_repo.working_tree_dir)
+    extension = RosdistroAnalyzer()
+
+    def _bump_releases(*repo_names):
+        return _merge_distributions(EXISTING_DISTROS, {
+            'jazzy': {
+                repo_name: {'release': {'version': '1.0.0-2'}}
+                for repo_name in repo_names
+            },
+        })
+
+    def _authorization_criteria(criteria):
+        return [c for c in criteria if 'authorization' in c.rationale]
+
+    # Baseline: the submitting user has permissions -> APPROVE
+    _write_distributions(_bump_releases('existing_jazzy'), repo_dir)
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria is not None and not annotations
+    auth_c = _authorization_criteria(criteria)
+    assert len(auth_c) == 1
+    assert auth_c[0].recommendation == Recommendation.APPROVE
+
+    # Permissions can't be queried -> the check is skipped silently
+    _write_distributions(_bump_releases('existing_hotel'), repo_dir)
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria is not None and not annotations
+    assert not _authorization_criteria(criteria)
+    assert all(Recommendation.APPROVE == c.recommendation for c in criteria)
+
+    # Some repositories were not checked -> don't claim the check passed
+    _write_distributions(
+        _bump_releases('existing_hotel', 'existing_jazzy'), repo_dir)
+    criteria, annotations = extension.analyze(repo_dir)
+    assert criteria is not None and not annotations
+    assert not _authorization_criteria(criteria)
+
+    # Problems with other repositories are still reported
+    _write_distributions(
+        _bump_releases('existing_hotel', 'existing_golf'), repo_dir)
+    criteria, annotations = extension.analyze(repo_dir)
+    auth_c = _authorization_criteria(criteria)
+    assert len(auth_c) == 1
+    assert auth_c[0].recommendation == Recommendation.DISAPPROVE
+    assert 'existing_hotel' not in auth_c[0].rationale
+    assert annotations
+    assert not any('existing_hotel' in a.message for a in annotations)
 
 
 # This particular violation needs a lot more context to validate

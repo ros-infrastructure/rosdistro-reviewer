@@ -379,7 +379,7 @@ def _check_github_user_permission(
         perm = repo.get_collaborator_permission(submitting_user)
         return perm.lower() if perm else None
     except Exception as e:  # noqa: B902
-        logger.debug(
+        logger.warning(
             f"Failed to check GitHub permissions for '{submitting_user}' "
             f"on '{repo_slug}': {e}")
         return None
@@ -426,7 +426,7 @@ def _check_repo_release_authorization(
     repo: Dict[str, Any],
     full_repo: Dict[str, Any],
     submitting_user: str,
-) -> Tuple[Optional[str], Optional[str], Any]:
+) -> Optional[Tuple[Optional[str], Optional[str], Any]]:
     lines = (
         getattr(repo.get('release', {}).get('version'), '__lines__', None) or
         getattr(repo.get('release'), '__lines__', None) or
@@ -457,12 +457,9 @@ def _check_repo_release_authorization(
 
     perm = _check_github_user_permission(submitting_user, slug)
     if perm is None:
-        msg = (
-            f"Authorization for repository '{repo_name}' could not be "
-            'automatically verified (failed to query GitHub permissions for '
-            f"'{slug}')"
-        )
-        return None, msg, lines
+        # TODO(#107): skip auth check for now, the default GitHub token
+        # doesn't have access to ros2-gbp, so the check can't be performed
+        return None
 
     if perm not in ('admin', 'write', 'maintain'):
         problem = (
@@ -506,10 +503,15 @@ def _check_maintainer_authorization(
 
     problems: Set[str] = set()
     unverified: Set[str] = set()
+    skipped = False
 
     for distro_file, repo_name, repo, full_repo in changed_repos:
-        problem, unverified_msg, lines = _check_repo_release_authorization(
+        result = _check_repo_release_authorization(
             repo_name, repo, full_repo, submitting_user)
+        if result is None:
+            skipped = True
+            continue
+        problem, unverified_msg, lines = result
         if problem:
             problems.add(problem)
             if lines:
@@ -538,6 +540,10 @@ def _check_maintainer_authorization(
             'Maintainer authorization could not be fully verified for '
             'changed repositories:',
         ] + sorted(unverified))
+    elif skipped:
+        # Don't claim that the check passed if it couldn't be performed for
+        # some of the repositories
+        return
     else:
         recommendation = Recommendation.APPROVE
         message = (
